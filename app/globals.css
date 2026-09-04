@@ -4,49 +4,263 @@
   padding: 0;
 }
 
+html,
+body {
+  min-height: 100%;
+}
+
 body {
   background: #050505;
-  color: #ffffff;
+  color: #f5f5f5;
   font-family: Arial, Helvetica, sans-serif;
 }
 
-main {
+button {
+  font: inherit;
+}
+
+.game {
   min-height: 100vh;
+  padding: 28px 32px 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid #1c1c1c;
+  padding-bottom: 24px;
+}
+
+.brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.subtitle {
+  margin-top: 6px;
+  color: #666;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.balance {
+  text-align: right;
+}
+
+.balance span {
+  display: block;
+  color: #555;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.balance strong {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.roulette-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 24px;
+  padding: 70px 20px 55px;
 }
 
-h1 {
-  font-size: clamp(3rem, 10vw, 7rem);
-  letter-spacing: -0.05em;
-  font-weight: 700;
+.wheel-placeholder {
+  width: min(330px, 70vw);
+  height: min(330px, 70vw);
+  border: 1px solid #292929;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: radial-gradient(
+    circle,
+    #111 0%,
+    #090909 55%,
+    #050505 100%
+  );
+  box-shadow:
+    0 0 80px rgba(255, 255, 255, 0.025),
+    inset 0 0 50px rgba(255, 255, 255, 0.02);
 }
 
-p {
-  margin-top: 12px;
-  color: #888888;
-  font-size: 1rem;
-  letter-spacing: 0.15em;
+.wheel-placeholder::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 1px solid #1d1d1d;
+  border-radius: 50%;
+}
+
+.wheel-center {
+  width: 58px;
+  height: 58px;
+  border: 1px solid #333;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 20px;
+}
+
+.wheel-label {
+  margin-top: 22px;
+  color: #555;
+  font-size: 9px;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
-button {
-  margin-top: 48px;
-  padding: 16px 28px;
-  background: transparent;
-  color: white;
-  border: 1px solid #444444;
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.bet-panel {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
 }
 
-button:hover {
-  background: white;
-  color: black;
+.bet-amount {
+  border-top: 1px solid #1c1c1c;
+  border-bottom: 1px solid #1c1c1c;
+  padding: 18px 0;
+}
+
+.bet-amount > span {
+  display: block;
+  color: #555;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.amount-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.amount-control button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #292929;
+  background: transparent;
+  color: #777;
+  cursor: pointer;
+}
+
+.amount-control strong {
+  min-width: 120px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.bet-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.bet-options button {
+  padding: 15px 10px;
+  border: 1px solid #222;
+  background: #090909;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  transition: 0.2s ease;
+}
+
+.bet-options button:hover {
+  border-color: #555;
+  color: #fff;
+}
+
+.spin-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 18px;
+  border: 1px solid #444;
+  background: #f5f5f5;
+  color: #050505;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  transition: 0.25s ease;
+}
+
+.spin-button:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.history {
+  max-width: 620px;
+  margin: 70px auto 0;
+}
+
+.history h2 {
+  color: #555;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #1c1c1c;
+}
+
+.history-empty {
+  padding: 24px 0;
+  color: #444;
+  font-size: 11px;
+}
+
+@media (max-width: 600px) {
+  .game {
+    padding: 20px 18px 45px;
+  }
+
+  .topbar {
+    align-items: center;
+  }
+
+  .brand {
+    font-size: 18px;
+  }
+
+  .subtitle {
+    font-size: 8px;
+  }
+
+  .balance strong {
+    font-size: 11px;
+  }
+
+  .roulette-section {
+    padding: 55px 10px 45px;
+  }
+
+  .bet-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .history {
+    margin-top: 55px;
+  }
 }
