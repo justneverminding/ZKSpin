@@ -272,6 +272,7 @@ button {
   height: 330px;
   border-radius: 50%;
   border: 1px solid #292929;
+  transition: transform 3s cubic-bezier(0.12, 0.78, 0.18, 1);
   background:
     radial-gradient(circle at center, #111 0%, #090909 48%, #050505 72%);
   box-shadow:
