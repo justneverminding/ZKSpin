@@ -5,34 +5,58 @@ const wheelNumbers = [
   29, 7, 28, 12, 35, 3, 26
 ];
 
+const redNumbers = new Set([
+  1, 3, 5, 7, 9, 12, 14, 16, 18,
+  19, 21, 23, 25, 27, 30, 32, 34, 36
+]);
+
+function getNumberColor(number: number) {
+  if (number === 0) return "green";
+  if (redNumbers.has(number)) return "red";
+  return "black";
+}
+
 export default function RouletteWheel() {
   return (
-    <div className="roulette-wheel">
-      {wheelNumbers.map((number, index) => {
-        const rotation = (360 / wheelNumbers.length) * index;
+    <div className="roulette-wrapper">
 
-        return (
-          <div
-            key={number}
-            className="roulette-number"
-            style={{
-              transform: `rotate(${rotation}deg) translateY(-145px)`
-            }}
-          >
-            <span
+      <div className="roulette-pointer" />
+
+      <div className="roulette-wheel">
+
+        {wheelNumbers.map((number, index) => {
+          const rotation =
+            (360 / wheelNumbers.length) * index;
+
+          const color = getNumberColor(number);
+
+          return (
+            <div
+              key={number}
+              className={`roulette-number ${color}`}
               style={{
-                transform: `rotate(-${rotation}deg)`
+                transform: `rotate(${rotation}deg) translateY(-145px)`
               }}
             >
-              {number}
-            </span>
-          </div>
-        );
-      })}
+              <span
+                style={{
+                  transform: `rotate(-${rotation}deg)`
+                }}
+              >
+                {number}
+              </span>
+            </div>
+          );
+        })}
 
-      <div className="roulette-inner">
-        <div className="roulette-center">ZK</div>
+        <div className="roulette-inner">
+          <div className="roulette-center">
+            ZK
+          </div>
+        </div>
+
       </div>
+
     </div>
   );
 }
