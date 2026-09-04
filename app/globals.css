@@ -418,3 +418,30 @@ button {
     margin: 0;
   }
 }
+.spin-result {
+  margin-top: 22px;
+  text-align: center;
+}
+
+.spin-result span {
+  display: block;
+  color: #555;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  margin-bottom: 8px;
+}
+
+.spin-result strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.spin-result em {
+  display: block;
+  margin-top: 7px;
+  color: #777;
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.18em;
+}
