@@ -355,3 +355,62 @@ button {
     margin: -30px 0;
   }
 }
+/* Roulette pocket colors */
+
+.roulette-wrapper {
+  position: relative;
+  width: 330px;
+  height: 330px;
+}
+
+.roulette-pointer {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 12px solid #f5f5f5;
+  z-index: 10;
+}
+
+.roulette-number {
+  border-radius: 50%;
+  transition: 0.2s ease;
+}
+
+.roulette-number.red {
+  background: #7a1f25;
+  color: #ffffff;
+}
+
+.roulette-number.black {
+  background: #161616;
+  color: #d8d8d8;
+  border: 1px solid #292929;
+}
+
+.roulette-number.green {
+  background: #164b35;
+  color: #ffffff;
+}
+
+.roulette-wheel {
+  overflow: visible;
+}
+
+@media (max-width: 600px) {
+  .roulette-wrapper {
+    width: 330px;
+    height: 330px;
+    transform: scale(0.82);
+    margin: -30px 0;
+  }
+
+  .roulette-wrapper .roulette-wheel {
+    transform: none;
+    margin: 0;
+  }
+}
