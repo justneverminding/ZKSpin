@@ -1,3 +1,4 @@
+import RouletteWheel from "../components/RouletteWheel";
 export default function Home() {
   return (
     <main className="game">
@@ -14,9 +15,7 @@ export default function Home() {
       </header>
 
       <section className="roulette-section">
-        <div className="wheel-placeholder">
-          <div className="wheel-center">?</div>
-        </div>
+        <RouletteWheel />
 
         <p className="wheel-label">Waiting for spin</p>
       </section>
