@@ -445,3 +445,29 @@ button {
   font-style: normal;
   letter-spacing: 0.18em;
 }
+/* Recent Spins */
+
+.history-list {
+  margin-top: 12px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 14px 0;
+
+  border-bottom: 1px solid #151515;
+}
+
+.history-item strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.history-item span {
+  color: #666;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
