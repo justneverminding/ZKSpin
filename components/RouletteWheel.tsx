@@ -1,3 +1,7 @@
+type RouletteWheelProps = {
+  rotation?: number;
+  spinning?: boolean;
+};
 const wheelNumbers = [
   0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
   6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
@@ -16,13 +20,21 @@ function getNumberColor(number: number) {
   return "black";
 }
 
-export default function RouletteWheel() {
+export default function RouletteWheel({
+  rotation = 0,
+  spinning = false,
+}: RouletteWheelProps) {
   return (
     <div className="roulette-wrapper">
 
       <div className="roulette-pointer" />
 
-      <div className="roulette-wheel">
+      <div
+  className={`roulette-wheel ${spinning ? "spinning" : ""}`}
+  style={{
+    transform: `rotate(${rotation}deg)`,
+  }}
+>
 
         {wheelNumbers.map((number, index) => {
           const rotation =
