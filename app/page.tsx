@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import RouletteWheel from "../components/RouletteWheel";
-import RouletteWheel from "../components/RouletteWheel";
 export default function Home() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
