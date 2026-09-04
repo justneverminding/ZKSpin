@@ -319,7 +319,10 @@ button {
 .roulette-number span {
   display: block;
 }
-
+.roulette-number-text {
+  display: block;
+  backface-visibility: hidden;
+}
 .roulette-inner {
   position: absolute;
   inset: 82px;
