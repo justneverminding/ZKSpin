@@ -16,13 +16,13 @@ export default function Home() {
   if (spinning) return;
 
   setSpinning(true);
+  setResult(null);
 
   const resultIndex = Math.floor(
     Math.random() * wheelNumbers.length
   );
   const resultNumber = wheelNumbers[resultIndex];
 
-setResult(resultNumber);
 
   const segmentAngle = 360 / wheelNumbers.length;
 
@@ -36,9 +36,10 @@ setResult(resultNumber);
     return current + 1440 + adjustment;
   });
 
-  setTimeout(() => {
-    setSpinning(false);
-  }, 3000);
+ setTimeout(() => {
+  setSpinning(false);
+  setResult(resultNumber);
+}, 3000);
 }
   return (
     <main className="game">
