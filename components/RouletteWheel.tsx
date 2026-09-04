@@ -37,8 +37,8 @@ export default function RouletteWheel({
 >
 
         {wheelNumbers.map((number, index) => {
-          const rotation =
-            (360 / wheelNumbers.length) * index;
+          const pocketRotation =
+  (360 / wheelNumbers.length) * index;
 
           const color = getNumberColor(number);
 
@@ -47,13 +47,13 @@ export default function RouletteWheel({
               key={number}
               className={`roulette-number ${color}`}
               style={{
-                transform: `rotate(${rotation}deg) translateY(-145px)`
+                transform: `rotate(${pocketRotation}deg) translateY(-145px)`
               }}
             >
-             <span
+           <span
   className="roulette-number-text"
   style={{
-    transform: `rotate(-${rotation}deg)`
+    transform: `rotate(${-pocketRotation - rotation}deg)`
   }}
 >
   {number}
