@@ -10,6 +10,7 @@ const wheelNumbers = [
 export default function Home() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [result, setResult] = useState<number | null>(null);
 
   function handleSpin() {
   if (spinning) return;
@@ -19,6 +20,9 @@ export default function Home() {
   const resultIndex = Math.floor(
     Math.random() * wheelNumbers.length
   );
+  const resultNumber = wheelNumbers[resultIndex];
+
+setResult(resultNumber);
 
   const segmentAngle = 360 / wheelNumbers.length;
 
@@ -56,7 +60,14 @@ export default function Home() {
   spinning={spinning}
 />
 
-        <p className="wheel-label">Waiting for spin</p>
+      {result === null ? (
+  <p className="wheel-label">Waiting for spin</p>
+) : (
+  <div className="spin-result">
+    <span>RESULT</span>
+    <strong>{result}</strong>
+  </div>
+)}
       </section>
 
       <section className="bet-panel">
