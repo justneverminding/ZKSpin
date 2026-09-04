@@ -471,3 +471,32 @@ button {
   font-size: 9px;
   letter-spacing: 0.16em;
 }
+.history-number {
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.history-number.red {
+  background: #7a1f25;
+  color: #fff;
+}
+
+.history-number.black {
+  background: #161616;
+  color: #ddd;
+  border: 1px solid #292929;
+}
+
+.history-number.green {
+  background: #164b35;
+  color: #fff;
+}
