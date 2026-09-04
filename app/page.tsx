@@ -131,8 +131,11 @@ export default function Home() {
           className="history-item"
           key={`${number}-${index}`}
         >
-          <strong>{number}</strong>
-          <span>{getResultColor(number)}</span>
+         <div className={`history-number ${getResultColor(number).toLowerCase()}`}>
+  {number}
+</div>
+
+<span>{getResultColor(number)}</span>
         </div>
       ))}
     </div>
