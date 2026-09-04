@@ -50,13 +50,14 @@ export default function RouletteWheel({
                 transform: `rotate(${rotation}deg) translateY(-145px)`
               }}
             >
-              <span
-                style={{
-                  transform: `rotate(-${rotation}deg)`
-                }}
-              >
-                {number}
-              </span>
+             <span
+  className="roulette-number-text"
+  style={{
+    transform: `rotate(-${rotation}deg)`
+  }}
+>
+  {number}
+</span>
             </div>
           );
         })}
