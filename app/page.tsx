@@ -1,21 +1,41 @@
 "use client";
 import { useState } from "react";
 import RouletteWheel from "../components/RouletteWheel";
+const wheelNumbers = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
+  6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
+  24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
+  29, 7, 28, 12, 35, 3, 26
+];
 export default function Home() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
 
   function handleSpin() {
-    if (spinning) return;
+  if (spinning) return;
 
-    setSpinning(true);
+  setSpinning(true);
 
-    setRotation((current) => current + 1440);
+  const resultIndex = Math.floor(
+    Math.random() * wheelNumbers.length
+  );
 
-    setTimeout(() => {
-      setSpinning(false);
-    }, 3000);
-  }
+  const segmentAngle = 360 / wheelNumbers.length;
+
+  setRotation((current) => {
+    const currentPosition = current % 360;
+    const targetPosition = -(resultIndex * segmentAngle);
+
+    const adjustment =
+      targetPosition - currentPosition;
+
+    return current + 1440 + adjustment;
+  });
+
+  setTimeout(() => {
+    setSpinning(false);
+  }, 3000);
+}
   return (
     <main className="game">
       <header className="topbar">
