@@ -21,6 +21,7 @@ export default function Home() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
+  const [history, setHistory] = useState<number[]>([]);
 
   function handleSpin() {
   if (spinning) return;
@@ -49,6 +50,11 @@ export default function Home() {
  setTimeout(() => {
   setSpinning(false);
   setResult(resultNumber);
+
+  setHistory((current) => [
+    resultNumber,
+    ...current,
+  ]);
 }, 3000);
 }
   return (
@@ -112,12 +118,26 @@ export default function Home() {
       </section>
 
       <section className="history">
-        <h2>Recent Spins</h2>
+  <h2>Recent Spins</h2>
 
-        <div className="history-empty">
-          No spins yet.
+  {history.length === 0 ? (
+    <div className="history-empty">
+      No spins yet.
+    </div>
+  ) : (
+    <div className="history-list">
+      {history.map((number, index) => (
+        <div
+          className="history-item"
+          key={`${number}-${index}`}
+        >
+          <strong>{number}</strong>
+          <span>{getResultColor(number)}</span>
         </div>
-      </section>
+      ))}
+    </div>
+  )}
+</section>
     </main>
   );
 }
