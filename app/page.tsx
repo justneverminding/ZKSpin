@@ -1,5 +1,22 @@
+"use client";
+import { useState } from "react";
+import RouletteWheel from "../components/RouletteWheel";
 import RouletteWheel from "../components/RouletteWheel";
 export default function Home() {
+  const [rotation, setRotation] = useState(0);
+  const [spinning, setSpinning] = useState(false);
+
+  function handleSpin() {
+    if (spinning) return;
+
+    setSpinning(true);
+
+    setRotation((current) => current + 1440);
+
+    setTimeout(() => {
+      setSpinning(false);
+    }, 3000);
+  }
   return (
     <main className="game">
       <header className="topbar">
@@ -15,7 +32,10 @@ export default function Home() {
       </header>
 
       <section className="roulette-section">
-        <RouletteWheel />
+        <RouletteWheel
+  rotation={rotation}
+  spinning={spinning}
+/>
 
         <p className="wheel-label">Waiting for spin</p>
       </section>
@@ -38,7 +58,13 @@ export default function Home() {
           <button>EVEN</button>
         </div>
 
-        <button className="spin-button">SPIN</button>
+        <button
+  className="spin-button"
+  onClick={handleSpin}
+  disabled={spinning}
+>
+  {spinning ? "SPINNING..." : "SPIN"}
+</button>
       </section>
 
       <section className="history">
