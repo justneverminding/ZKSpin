@@ -7,6 +7,10 @@ const wheelNumbers = [
   24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
   29, 7, 28, 12, 35, 3, 26
 ];
+const predictionNumbers = Array.from(
+  { length: 37 },
+  (_, index) => index
+);
 const redNumbers = new Set([
   1, 3, 5, 7, 9, 12, 14, 16, 18,
   19, 21, 23, 25, 27, 30, 32, 34, 36
@@ -22,6 +26,8 @@ export default function Home() {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [history, setHistory] = useState<number[]>([]);
+  const [selectedNumber, setSelectedNumber] =
+  useState<number | null>(null);
 
   function handleSpin() {
   if (spinning) return;
@@ -101,12 +107,34 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bet-options">
-          <button>RED</button>
-          <button>BLACK</button>
-          <button>ODD</button>
-          <button>EVEN</button>
-        </div>
+        <div className="prediction">
+  <div className="prediction-header">
+    <span>PREDICT THE RESULT</span>
+
+    <strong>
+      {selectedNumber === null
+        ? "SELECT 0–36"
+        : `NUMBER ${selectedNumber}`}
+    </strong>
+  </div>
+
+  <div className="number-grid">
+    {predictionNumbers.map((number) => (
+      <button
+        key={number}
+        className={
+          selectedNumber === number
+            ? "number-button selected"
+            : "number-button"
+        }
+        onClick={() => setSelectedNumber(number)}
+        disabled={spinning}
+      >
+        {number}
+      </button>
+    ))}
+  </div>
+</div>
 
         <button
   className="spin-button"
