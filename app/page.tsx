@@ -412,9 +412,9 @@ export default function Home() {
           POCKET
         */
         const pocket =
-          verifyBlockHash(
-            data.hash
-          );
+  await verifyBlockHash(
+    data.hash
+  );
 
         if (pocket === null) {
           resolvingBlockRef.current =
