@@ -567,3 +567,33 @@ button {
     grid-template-columns: repeat(7, 1fr);
   }
 }
+/* Simple Bet Options */
+
+.simple-bet-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.simple-bet-options button {
+  height: 58px;
+  border: 1px solid #292929;
+  background: #090909;
+  color: #aaa;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.simple-bet-options button:hover {
+  border-color: #555;
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .simple-bet-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
