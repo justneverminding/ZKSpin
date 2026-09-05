@@ -3,15 +3,13 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const CIPHERSCAN_URL =
+  "https://api.testnet.cipherscan.app/api/blockchain-info";
+
 export async function GET() {
   try {
-    /*
-      Get the latest block from the Zcash testnet
-      CipherScan API.
-    */
-
     const response = await fetch(
-      "https://api.testnet.cipherscan.app/api/block/latest",
+      CIPHERSCAN_URL,
       {
         cache: "no-store",
       }
@@ -25,73 +23,67 @@ export async function GET() {
       );
 
       return NextResponse.json({
+        network: "testnet",
         connected: false,
         height: null,
         bestBlockHash: null,
+        source: "CipherScan",
         error: `CipherScan returned HTTP ${response.status}`,
       });
     }
 
-    const data = await response.json();
-
-    /*
-      CipherScan block response.
-
-      We defensively check all possible fields
-      so the application never crashes if the
-      response format changes.
-    */
+    const data =
+      await response.json();
 
     const height =
-      typeof data?.height === "number"
-        ? data.height
-        : typeof data?.data?.height === "number"
-        ? data.data.height
+      typeof data?.blocks ===
+      "number"
+        ? data.blocks
         : null;
 
     const bestBlockHash =
-      typeof data?.hash === "string"
-        ? data.hash
-        : typeof data?.data?.hash === "string"
-        ? data.data.hash
+      typeof data?.bestblockhash ===
+      "string"
+        ? data.bestblockhash
         : null;
-
-    /*
-      A successful HTTP response without a valid
-      height is still considered unusable.
-    */
 
     if (height === null) {
       console.error(
-        "CipherScan returned unexpected data:",
+        "CipherScan returned unexpected status data:",
         data
       );
 
       return NextResponse.json({
+        network: "testnet",
         connected: false,
         height: null,
         bestBlockHash: null,
+        source: "CipherScan",
         error:
-          "CipherScan returned invalid block data",
+          "CipherScan returned invalid blockchain data",
       });
     }
 
     return NextResponse.json({
+      network: "testnet",
       connected: true,
       height,
       bestBlockHash,
+      source: "CipherScan",
       error: null,
     });
   } catch (error) {
     console.error(
-      "CipherScan block lookup error:",
+      "CipherScan status error:",
       error
     );
 
     return NextResponse.json({
+      network: "testnet",
       connected: false,
       height: null,
       bestBlockHash: null,
+      source: "CipherScan",
       error:
         "Unable to reach CipherScan",
     });
