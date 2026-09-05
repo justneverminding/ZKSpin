@@ -226,8 +226,6 @@ setHistory((current) => [
       </p>
     )}
   </div>
-)}
-      </section>
 
     )}
       </section>
