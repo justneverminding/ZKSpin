@@ -28,6 +28,8 @@ export default function Home() {
   const [history, setHistory] = useState<number[]>([]);
   const [selectedNumber, setSelectedNumber] =
   useState<number | null>(null);
+    const [selectedBet, setSelectedBet] =
+    useState<"RED" | null>(null);
 
   function handleSpin() {
   if (spinning) return;
