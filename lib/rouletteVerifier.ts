@@ -58,15 +58,17 @@ export async function verifyBlockHash(
    * exactly 6 possible byte values.
    */
 
-  for (const value of bytes) {
-    if (value > 227) {
-      continue;
-    }
+  for (let i = 0; i < bytes.length; i++) {
+  const value = bytes[i];
 
-    const group = Math.floor(value / 6);
-
-    return roulettePockets[group];
+  if (value > 227) {
+    continue;
   }
+
+  const group = Math.floor(value / 6);
+
+  return roulettePockets[group];
+}
 
   return null;
 }
