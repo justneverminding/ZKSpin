@@ -45,6 +45,18 @@ const [balance, setBalance] = useState(100);
   useState(false);
   const [bestBlockHash, setBestBlockHash] =
   useState<string | null>(null);
+  
+  const [targetBlockHeight, setTargetBlockHeight] =
+  useState<number | null>(null);
+
+const [roundBlockHash, setRoundBlockHash] =
+  useState<string | null>(null);
+
+const [roundVerifiedPocket, setRoundVerifiedPocket] =
+  useState<RouletteResult | null>(null);
+
+const [waitingForBlock, setWaitingForBlock] =
+  useState(false);
 
 const wagerAmount = Number(betAmount);
 
