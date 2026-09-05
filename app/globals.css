@@ -48,6 +48,12 @@ button {
   text-transform: uppercase;
 }
 
+.topbar-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .balance {
   text-align: right;
 }
