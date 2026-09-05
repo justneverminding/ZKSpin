@@ -75,7 +75,10 @@ button {
 
 .network-status {
   text-align: right;
-  margin-top: 12px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .network-status span {
