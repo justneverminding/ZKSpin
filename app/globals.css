@@ -505,6 +505,14 @@ button {
   font-weight: 600;
   letter-spacing: 0.12em;
 }
+
+.history-win {
+  color: #7fbe98;
+}
+
+.history-loss {
+  color: #a66a6a;
+}
 .history-number {
   width: 28px;
   height: 28px;
