@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import RouletteWheel from "../components/RouletteWheel";
 type RouletteResult = number | "00";
 
@@ -40,6 +40,8 @@ export default function Home() {
 const [balance, setBalance] = useState(100);
   const [blockHeight, setBlockHeight] =
   useState<number | null>(null);
+  const [testnetConnected, setTestnetConnected] =
+  useState(false);
 
 const wagerAmount = Number(betAmount);
 
@@ -62,6 +64,23 @@ const invalidBet =
   useState<"RED" | "BLACK" | "ODD" | "EVEN" | null>(null);
   const [outcome, setOutcome] =
   useState<"WIN" | "LOSS" | null>(null);
+  
+  useEffect(() => {
+  async function loadZcashStatus() {
+    try {
+      const response = await fetch("/api/zcash-status");
+      const data = await response.json();
+
+      setBlockHeight(data.height);
+      setTestnetConnected(data.connected);
+    } catch {
+      setBlockHeight(null);
+      setTestnetConnected(false);
+    }
+  }
+
+  loadZcashStatus();
+}, []);
 
   function handleSpin() {
   const wager = Number(betAmount);
@@ -154,12 +173,15 @@ setHistory((current) => [
     <strong>{balance} TEST ZEC</strong>
   </div>
 
-  <div className="network-status">
-    <span>ZCASH TESTNET</span>
-    <strong>
-  BLOCK: {blockHeight ?? "—"}
-</strong>
-  </div>
+ <div className="network-status">
+  <span>
+    ZCASH TESTNET •{" "}
+    {testnetConnected ? "CONNECTED" : "OFFLINE"}
+  </span>
+
+  <strong>
+    BLOCK: {blockHeight ?? "—"}
+  </strong>
 </div>
         
       </header>
