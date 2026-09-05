@@ -1,174 +1,76 @@
 import { NextResponse } from "next/server";
 
-const CIPHERSCAN_STATUS_URL =
-  "https://api.testnet.cipherscan.app/api/blockchain-info";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export async function GET(
-  request: Request,
-  { params }: { params: { height: string } }
-) {
+export async function GET() {
   try {
-    const height =
-      Number(params.height);
-
-    if (
-      !Number.isInteger(height) ||
-      height < 0
-    ) {
-      return NextResponse.json(
-        {
-          connected: false,
-          found: false,
-          status: "INVALID_HEIGHT",
-          targetHeight: null,
-          tipHeight: null,
-          hash: null,
-          source: "CipherScan",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const [
-      blockResponse,
-      statusResponse,
-    ] =
-      await Promise.all([
-        fetch(
-          `https://api.testnet.cipherscan.app/api/blocks/${height}`,
-          {
-            cache: "no-store",
-          }
-        ),
-
-        fetch(
-          CIPHERSCAN_STATUS_URL,
-          {
-            cache: "no-store",
-          }
-        ),
-      ]);
-
-    if (
-      !statusResponse.ok
-    ) {
-      return NextResponse.json(
-        {
-          connected: false,
-          found: false,
-          status:
-            "SOURCE_UNAVAILABLE",
-          targetHeight: height,
-          tipHeight: null,
-          hash: null,
-          source: "CipherScan",
-        },
-        {
-          status: 503,
-        }
-      );
-    }
-
-    const statusData =
-      await statusResponse.json();
-
-    const tipHeight =
-      typeof statusData.blocks ===
-      "number"
-        ? statusData.blocks
-        : null;
-
-    if (
-      tipHeight === null
-    ) {
-      return NextResponse.json(
-        {
-          connected: false,
-          found: false,
-          status:
-            "SOURCE_UNAVAILABLE",
-          targetHeight: height,
-          tipHeight: null,
-          hash: null,
-          source: "CipherScan",
-        },
-        {
-          status: 503,
-        }
-      );
-    }
-
-    if (
-      !blockResponse.ok
-    ) {
-      if (
-        tipHeight < height
-      ) {
-        return NextResponse.json({
-          connected: true,
-          found: false,
-          status:
-            "NOT_MINED",
-          targetHeight: height,
-          tipHeight,
-          hash: null,
-          source: "CipherScan",
-        });
+    const response = await fetch(
+      "https://api.cipherscan.app/api/v1/zcash/testnet/block/latest",
+      {
+        cache: "no-store",
       }
+    );
 
-      return NextResponse.json({
-        connected: true,
-        found: false,
-        status:
-          "DATA_SOURCE_LAG",
-        targetHeight: height,
-        tipHeight,
-        hash: null,
-        source: "CipherScan",
-      });
+    if (!response.ok) {
+      console.error(
+        "CipherScan status error:",
+        response.status,
+        response.statusText
+      );
+
+      return NextResponse.json(
+        {
+          connected: false,
+          height: null,
+          bestBlockHash: null,
+        },
+        {
+          status: 200,
+        }
+      );
     }
 
-    const blockData =
-      await blockResponse.json();
+    const data = await response.json();
 
-    const hash =
-      typeof blockData.hash ===
-      "string"
-        ? blockData.hash.toLowerCase()
+    /*
+      CipherScan may return an unexpected response.
+      Never assume data.height exists.
+    */
+
+    const height =
+      typeof data?.height === "number"
+        ? data.height
+        : typeof data?.data?.height === "number"
+        ? data.data.height
         : null;
 
-    if (!hash) {
+    const bestBlockHash =
+      typeof data?.hash === "string"
+        ? data.hash
+        : typeof data?.bestBlockHash === "string"
+        ? data.bestBlockHash
+        : typeof data?.data?.hash === "string"
+        ? data.data.hash
+        : null;
+
+    if (height === null) {
+      console.error(
+        "CipherScan returned unexpected data:",
+        data
+      );
+
       return NextResponse.json({
-        connected: true,
-        found: false,
-        status:
-          "DATA_SOURCE_LAG",
-        targetHeight: height,
-        tipHeight,
-        hash: null,
-        source: "CipherScan",
+        connected: false,
+        height: null,
+        bestBlockHash: null,
       });
     }
-
-    const confirmationDepth =
-      Math.max(
-        1,
-        tipHeight -
-          height +
-          1
-      );
 
     return NextResponse.json({
       connected: true,
-      found: true,
-      status: "FOUND",
-      targetHeight: height,
-      tipHeight,
-      confirmationDepth,
-      hash,
-      source: "CipherScan",
+      height,
+      bestBlockHash,
     });
   } catch (error) {
     console.error(
@@ -176,22 +78,10 @@ export async function GET(
       error
     );
 
-    return NextResponse.json(
-      {
-        connected: false,
-        found: false,
-        status:
-          "SOURCE_UNAVAILABLE",
-        targetHeight:
-          Number(params.height) ||
-          null,
-        tipHeight: null,
-        hash: null,
-        source: "CipherScan",
-      },
-      {
-        status: 503,
-      }
-    );
+    return NextResponse.json({
+      connected: false,
+      height: null,
+      bestBlockHash: null,
+    });
   }
 }
