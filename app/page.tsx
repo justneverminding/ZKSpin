@@ -25,6 +25,8 @@ export default function Home() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
+
+  const [betAmount, setBetAmount] = useState(1);
   const [history, setHistory] = useState<number[]>([]);
   const [selectedNumber, setSelectedNumber] =
   useState<number | null>(null);
@@ -129,10 +131,26 @@ if (won) {
           <span>Bet amount</span>
 
           <div className="amount-control">
-            <button>-</button>
-            <strong>1 TEST ZEC</strong>
-            <button>+</button>
-          </div>
+  <button
+    onClick={() =>
+      setBetAmount((current) => Math.max(1, current - 1))
+    }
+    disabled={spinning}
+  >
+    -
+  </button>
+
+  <strong>{betAmount} TEST ZEC</strong>
+
+  <button
+    onClick={() =>
+      setBetAmount((current) => current + 1)
+    }
+    disabled={spinning}
+  >
+    +
+  </button>
+</div>
         </div>
 
        <div className="prediction">
