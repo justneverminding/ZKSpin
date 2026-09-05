@@ -3,12 +3,16 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const CIPHERSCAN_INFO_URL =
+  "https://api.testnet.cipherscan.app/api/blockchain-info";
+
 export async function GET(
   request: Request,
   { params }: { params: { height: string } }
 ) {
   try {
-    const targetHeight = Number(params.height);
+    const targetHeight =
+      Number(params.height);
 
     if (
       !Number.isInteger(targetHeight) ||
@@ -31,21 +35,17 @@ export async function GET(
     }
 
     /*
-      First get the latest known block.
-
-      This lets us determine whether the
-      requested block has been mined yet.
+      Get current Zcash testnet tip.
     */
-
-    const latestResponse =
+    const infoResponse =
       await fetch(
-        "https://api.cipherscan.app/api/v1/zcash/testnet/block/latest",
+        CIPHERSCAN_INFO_URL,
         {
           cache: "no-store",
         }
       );
 
-    if (!latestResponse.ok) {
+    if (!infoResponse.ok) {
       return NextResponse.json({
         connected: false,
         status: "SOURCE_UNAVAILABLE",
@@ -53,20 +53,17 @@ export async function GET(
         hash: null,
         tipHeight: null,
         confirmationDepth: 0,
-        error: `Latest block source returned HTTP ${latestResponse.status}`,
+        error: `CipherScan blockchain-info returned HTTP ${infoResponse.status}`,
       });
     }
 
-    const latestData =
-      await latestResponse.json();
+    const infoData =
+      await infoResponse.json();
 
     const tipHeight =
-      typeof latestData?.height ===
+      typeof infoData?.blocks ===
       "number"
-        ? latestData.height
-        : typeof latestData?.data
-            ?.height === "number"
-        ? latestData.data.height
+        ? infoData.blocks
         : null;
 
     if (tipHeight === null) {
@@ -78,18 +75,17 @@ export async function GET(
         tipHeight: null,
         confirmationDepth: 0,
         error:
-          "Latest block source returned invalid data",
+          "CipherScan returned invalid blockchain-info data",
       });
     }
 
     /*
-      The target block has not been mined yet.
-
-      The blockchain tip has not reached
-      the locked round block.
+      The source tip has not reached
+      our locked block yet.
     */
-
-    if (tipHeight < targetHeight) {
+    if (
+      tipHeight < targetHeight
+    ) {
       return NextResponse.json({
         connected: true,
         status: "NOT_MINED",
@@ -102,12 +98,11 @@ export async function GET(
     }
 
     /*
-      Fetch the specific locked block.
+      The chain tip says the target
+      height should exist.
 
-      CipherScan's block endpoint may differ
-      from the latest block endpoint.
+      Now request that exact block.
     */
-
     const blockResponse =
       await fetch(
         `https://api.testnet.cipherscan.app/api/block/${targetHeight}`,
@@ -117,14 +112,12 @@ export async function GET(
       );
 
     /*
-      The latest endpoint says the chain has
-      reached this height, but the block endpoint
-      cannot provide the block yet.
+      Tip is already at/past target,
+      but target block lookup is not
+      available yet.
 
-      This is treated as source lag rather than
-      declaring the round failed.
+      Treat this as source lag.
     */
-
     if (!blockResponse.ok) {
       return NextResponse.json({
         connected: true,
@@ -144,19 +137,12 @@ export async function GET(
       typeof blockData?.hash ===
       "string"
         ? blockData.hash
-        : typeof blockData?.data?.hash ===
-          "string"
+        : typeof blockData?.data
+            ?.hash === "string"
         ? blockData.data.hash
         : null;
 
-    /*
-      The endpoint responded, but no usable hash
-      was returned.
-
-      Treat this as data source lag.
-    */
-
-    if (blockHash === null) {
+    if (!blockHash) {
       return NextResponse.json({
         connected: true,
         status: "DATA_SOURCE_LAG",
@@ -169,23 +155,16 @@ export async function GET(
     }
 
     /*
-      Confirmation depth:
+      Actual block depth.
 
-      Target block itself = 1 confirmation.
-
-      Example:
-
+      target = 100
       tip = 100
+      => 1 confirmation
+
       target = 100
-
-      depth = 1
-
       tip = 101
-      target = 100
-
-      depth = 2
+      => 2 confirmations
     */
-
     const confirmationDepth =
       Math.max(
         1,
@@ -198,7 +177,8 @@ export async function GET(
       connected: true,
       status: "FOUND",
       found: true,
-      hash: blockHash.toLowerCase(),
+      hash:
+        blockHash.toLowerCase(),
       tipHeight,
       confirmationDepth,
       error: null,
