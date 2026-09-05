@@ -27,6 +27,7 @@ export default function Home() {
   const [result, setResult] = useState<number | null>(null);
 
   const [betAmount, setBetAmount] = useState(1);
+  const [balance, setBalance] = useState(100);
   const [history, setHistory] = useState<number[]>([]);
   const [selectedNumber, setSelectedNumber] =
   useState<number | null>(null);
@@ -97,7 +98,7 @@ if (won) {
 
         <div className="balance">
           <span>Balance</span>
-          <strong>100 TEST ZEC</strong>
+          <strong>{balance} TEST ZEC</strong>
         </div>
       </header>
 
