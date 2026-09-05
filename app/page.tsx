@@ -29,7 +29,7 @@ export default function Home() {
   const [selectedNumber, setSelectedNumber] =
   useState<number | null>(null);
     const [selectedBet, setSelectedBet] =
-  useState<"RED" | "BLACK" | "ODD" | null>(null);
+  useState<"RED" | "BLACK" | "ODD" | "EVEN" | null>(null);
   const [outcome, setOutcome] =
   useState<"WIN" | "LOSS" | null>(null);
 
@@ -69,7 +69,10 @@ const won =
   selectedBet === resultColor ||
   (selectedBet === "ODD" &&
     resultNumber !== 0 &&
-    resultNumber % 2 !== 0);
+    resultNumber % 2 !== 0) ||
+  (selectedBet === "EVEN" &&
+    resultNumber !== 0 &&
+    resultNumber % 2 === 0);
 
 if (won) {
   setOutcome("WIN");
@@ -161,7 +164,14 @@ if (won) {
 >
   ODD
 </button>
-    <button>EVEN</button>
+    
+    <button
+  className={selectedBet === "EVEN" ? "selected" : ""}
+  onClick={() => setSelectedBet("EVEN")}
+  disabled={spinning}
+>
+  EVEN
+</button>
   </div>
 </div>
    <button
