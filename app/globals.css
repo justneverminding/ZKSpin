@@ -168,6 +168,22 @@ button {
   font-weight: 400;
 }
 
+.amount-control input {
+  width: 80px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  text-align: center;
+  font: inherit;
+}
+
+.amount-control input::-webkit-inner-spin-button,
+.amount-control input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 .bet-options {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
