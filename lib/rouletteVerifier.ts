@@ -9,28 +9,56 @@ const roulettePockets: VerifiedRouletteResult[] = [
   7, 8, 9, 10, 11, 12,
   13, 14, 15, 16, 17, 18,
   19, 20, 21, 22, 23, 24,
-  25, 26, 27, 28, 29, 30,
-  31, 32, 33, 34, 35, 36,
+  25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
 ];
 
-export function verifyBlockHash(
+export async function verifyBlockHash(
   blockHash: string
-): VerifiedRouletteResult | null {
-  for (let i = 0; i < blockHash.length; i += 2) {
-    const pair = blockHash.slice(i, i + 2);
+): Promise<VerifiedRouletteResult | null> {
+  if (!/^[0-9a-fA-F]+$/.test(blockHash)) {
+    return null;
+  }
 
-    if (pair.length !== 2) {
-      continue;
-    }
+  /*
+   * IMPORTANT:
+   *
+   * We do NOT use the raw Zcash block hash directly.
+   *
+   * Zcash block hashes are proof-of-work hashes, so their
+   * leading bytes are affected by the mining target.
+   *
+   * Instead we hash the complete block hash again.
+   *
+   * This gives us a fresh deterministic SHA-256 digest
+   * derived from the Zcash block hash.
+   */
 
-    const value = parseInt(pair, 16);
+  const encoder = new TextEncoder();
 
-    if (!Number.isFinite(value)) {
-      continue;
-    }
+  const input = encoder.encode(
+    `zkspin:v1:${blockHash.toLowerCase()}`
+  );
 
-    // 228–255 are skipped so all 38 pockets
-    // receive exactly the same number of values.
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    input
+  );
+
+  const bytes = new Uint8Array(digest);
+
+  /*
+   * Rejection sampling:
+   *
+   * 0–227 = 228 usable values
+   * 228–255 = rejected
+   *
+   * 228 / 38 = 6
+   *
+   * Therefore every roulette pocket receives
+   * exactly 6 possible byte values.
+   */
+
+  for (const value of bytes) {
     if (value > 227) {
       continue;
     }
