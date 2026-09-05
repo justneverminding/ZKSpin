@@ -96,7 +96,7 @@ if (selectedBet === resultColor) {
   spinning={spinning}
 />
 
-      {result === null ? (
+     {result === null ? (
   <p className="wheel-label">
     {spinning ? "Spinning..." : "Waiting for spin"}
   </p>
@@ -105,6 +105,12 @@ if (selectedBet === resultColor) {
     <span>RESULT</span>
     <strong>{result}</strong>
     <em>{getResultColor(result)}</em>
+
+    {outcome !== null && (
+      <p className="round-outcome">
+        {outcome}
+      </p>
+    )}
   </div>
 )}
       </section>
