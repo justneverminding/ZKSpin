@@ -38,7 +38,14 @@ const invalidBet =
   wagerAmount < 1 ||
   wagerAmount > balance;
   
-  const [history, setHistory] = useState<number[]>([]);
+ const [history, setHistory] = useState<
+  {
+    result: number;
+    bet: "RED" | "BLACK" | "ODD" | "EVEN";
+    amount: number;
+    outcome: "WIN" | "LOSS";
+  }[]
+>([]);
   const [selectedNumber, setSelectedNumber] =
   useState<number | null>(null);
     const [selectedBet, setSelectedBet] =
@@ -103,10 +110,15 @@ if (won) {
 } else {
   setOutcome("LOSS");
 }
-  setHistory((current) => [
-    resultNumber,
-    ...current,
-  ]);
+setHistory((current) => [
+  {
+    result: resultNumber,
+    bet: selectedBet,
+    amount: wager,
+    outcome: won ? "WIN" : "LOSS",
+  },
+  ...current,
+]);
 }, 3000);
 }
   return (
@@ -256,18 +268,30 @@ if (won) {
     </div>
   ) : (
     <div className="history-list">
-      {history.map((number, index) => (
-        <div
-          className="history-item"
-          key={`${number}-${index}`}
-        >
-         <div className={`history-number ${getResultColor(number).toLowerCase()}`}>
-  {number}
-</div>
+      {history.map((round, index) => (
+  <div
+    className="history-item"
+    key={`${round.result}-${index}`}
+  >
+    <div
+      className={`history-number ${getResultColor(
+        round.result
+      ).toLowerCase()}`}
+    >
+      {round.result}
+    </div>
 
-<span>{getResultColor(number)}</span>
-        </div>
-      ))}
+    <div>
+      <span>
+        {round.bet} • {round.amount} TEST ZEC
+      </span>
+
+      <p>
+        {getResultColor(round.result)} • {round.outcome}
+      </p>
+    </div>
+  </div>
+))}
     </div>
   )}
 </section>
