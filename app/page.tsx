@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import RouletteWheel from "../components/RouletteWheel";
+import { verifyBlockHash } from "../lib/rouletteVerifier";
 type RouletteResult = number | "00";
 
 const wheelNumbers: RouletteResult[] = [
@@ -42,6 +43,8 @@ const [balance, setBalance] = useState(100);
   useState<number | null>(null);
   const [testnetConnected, setTestnetConnected] =
   useState(false);
+  const [bestBlockHash, setBestBlockHash] =
+  useState<string | null>(null);
 
 const wagerAmount = Number(betAmount);
 
@@ -50,6 +53,11 @@ const invalidBet =
   !Number.isFinite(wagerAmount) ||
   wagerAmount < 1 ||
   wagerAmount > balance;
+  
+  const verifiedPocket =
+  bestBlockHash !== null
+    ? verifyBlockHash(bestBlockHash)
+    : null;
   
  const [history, setHistory] = useState<
   {
@@ -72,11 +80,13 @@ const invalidBet =
       const data = await response.json();
 
       setBlockHeight(data.height);
-      setTestnetConnected(data.connected);
-    } catch {
-      setBlockHeight(null);
-      setTestnetConnected(false);
-    }
+setBestBlockHash(data.bestBlockHash);
+setTestnetConnected(data.connected);
+   } catch {
+  setBlockHeight(null);
+  setBestBlockHash(null);
+  setTestnetConnected(false);
+}
   }
 
   loadZcashStatus();
@@ -183,6 +193,10 @@ setHistory((current) => [
 
   <strong>
     BLOCK: {blockHeight ?? "—"}
+  </strong>
+
+  <strong>
+    VERIFIED: {verifiedPocket ?? "—"}
   </strong>
 </div>
 
