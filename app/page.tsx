@@ -6,7 +6,13 @@ import { verifyBlockHash } from "../lib/rouletteVerifier";
 
 type RouletteResult = number | "00";
 
-type BetType = "RED" | "BLACK" | "ODD" | "EVEN";
+type BetType =
+  | "RED"
+  | "BLACK"
+  | "ODD"
+  | "EVEN";
+
+const BETTING_SECONDS = 15;
 
 const wheelNumbers: RouletteResult[] = [
   0, 28, 9, 26, 30, 11, 7, 20, 32, 17,
@@ -20,8 +26,13 @@ const redNumbers = new Set([
   19, 21, 23, 25, 27, 30, 32, 34, 36,
 ]);
 
-function getResultColor(result: RouletteResult) {
-  if (result === 0 || result === "00") {
+function getResultColor(
+  result: RouletteResult
+) {
+  if (
+    result === 0 ||
+    result === "00"
+  ) {
     return "GREEN";
   }
 
@@ -35,100 +46,197 @@ function getResultColor(result: RouletteResult) {
   return "BLACK";
 }
 
+function formatTime(seconds: number) {
+  const minutes =
+    Math.floor(seconds / 60);
+
+  const remainingSeconds =
+    seconds % 60;
+
+  return `${String(minutes).padStart(
+    2,
+    "0"
+  )}:${String(
+    remainingSeconds
+  ).padStart(2, "0")}`;
+}
+
 export default function Home() {
-  const [rotation, setRotation] = useState(0);
-  const [spinning, setSpinning] = useState(false);
+  const [rotation, setRotation] =
+    useState(0);
+
+  const [spinning, setSpinning] =
+    useState(false);
 
   const [result, setResult] =
-    useState<RouletteResult | null>(null);
+    useState<RouletteResult | null>(
+      null
+    );
 
-  const [betAmount, setBetAmount] = useState("1");
-  const [balance, setBalance] = useState(100);
+  const [betAmount, setBetAmount] =
+    useState("1");
 
-  const [blockHeight, setBlockHeight] =
+  const [balance, setBalance] =
+    useState(100);
+
+  const [
+    blockHeight,
+    setBlockHeight,
+  ] =
     useState<number | null>(null);
 
-  const [testnetConnected, setTestnetConnected] =
+  const [
+    testnetConnected,
+    setTestnetConnected,
+  ] =
     useState(false);
 
-  const [bestBlockHash, setBestBlockHash] =
+  const [
+    bestBlockHash,
+    setBestBlockHash,
+  ] =
     useState<string | null>(null);
 
-  const [targetBlockHeight, setTargetBlockHeight] =
+  const [
+    targetBlockHeight,
+    setTargetBlockHeight,
+  ] =
     useState<number | null>(null);
 
-  const [roundBlockHash, setRoundBlockHash] =
+  const [
+    roundBlockHash,
+    setRoundBlockHash,
+  ] =
     useState<string | null>(null);
 
-  const [roundVerifiedPocket, setRoundVerifiedPocket] =
-    useState<RouletteResult | null>(null);
+  const [
+    roundVerifiedPocket,
+    setRoundVerifiedPocket,
+  ] =
+    useState<RouletteResult | null>(
+      null
+    );
 
-  const [waitingForBlock, setWaitingForBlock] =
+  const [
+    waitingForBlock,
+    setWaitingForBlock,
+  ] =
     useState(false);
 
-  const [lockingRound, setLockingRound] =
+  const [
+    lockingRound,
+    setLockingRound,
+  ] =
     useState(false);
 
-  const [roundBet, setRoundBet] =
+  const [
+    roundBet,
+    setRoundBet,
+  ] =
     useState<BetType | null>(null);
 
-  const [roundWager, setRoundWager] =
+  const [
+    roundWager,
+    setRoundWager,
+  ] =
     useState<number | null>(null);
 
-  const [selectedBet, setSelectedBet] =
+  const [
+    selectedBet,
+    setSelectedBet,
+  ] =
     useState<BetType | null>(null);
 
-  const [outcome, setOutcome] =
-    useState<"WIN" | "LOSS" | null>(null);
+  const [
+    outcome,
+    setOutcome,
+  ] =
+    useState<"WIN" | "LOSS" | null>(
+      null
+    );
 
   /*
-    NEW:
-    Betting countdown starts at 15 seconds.
+    BETTING TIMER
   */
-  const [bettingTimeLeft, setBettingTimeLeft] =
-    useState(15);
+  const [
+    bettingTimeLeft,
+    setBettingTimeLeft,
+  ] =
+    useState(BETTING_SECONDS);
 
-  const [history, setHistory] = useState<
-    {
-      result: RouletteResult;
-      bet: BetType;
-      amount: number;
-      outcome: "WIN" | "LOSS";
-    }[]
-  >([]);
+  /*
+    HOW LONG WE HAVE BEEN
+    WAITING FOR THE ZCASH BLOCK
+  */
+  const [
+    waitingSeconds,
+    setWaitingSeconds,
+  ] =
+    useState(0);
 
-  const resolvingBlockRef = useRef(false);
+  const [history, setHistory] =
+    useState<
+      {
+        result: RouletteResult;
+        bet: BetType;
+        amount: number;
+        outcome: "WIN" | "LOSS";
+      }[]
+    >([]);
 
-  const wagerAmount = Number(betAmount);
+  const resolvingBlockRef =
+    useRef(false);
+
+  const wagerAmount =
+    Number(betAmount);
 
   const invalidBet =
     betAmount.trim() === "" ||
-    !Number.isFinite(wagerAmount) ||
+    !Number.isFinite(
+      wagerAmount
+    ) ||
     wagerAmount < 1 ||
     wagerAmount > balance;
 
+  const bettingClosed =
+    bettingTimeLeft === 0;
+
   /*
-    LOAD CURRENT ZCASH TESTNET STATUS
+    LOAD CURRENT ZCASH STATUS
   */
   useEffect(() => {
     async function loadZcashStatus() {
       try {
-        const response = await fetch(
-          "/api/zcash-status",
-          {
-            cache: "no-store",
-          }
+        const response =
+          await fetch(
+            "/api/zcash-status",
+            {
+              cache:
+                "no-store",
+            }
+          );
+
+        const data =
+          await response.json();
+
+        setBlockHeight(
+          data.height
         );
 
-        const data = await response.json();
+        setBestBlockHash(
+          data.bestBlockHash
+        );
 
-        setBlockHeight(data.height);
-        setBestBlockHash(data.bestBlockHash);
-        setTestnetConnected(data.connected);
+        setTestnetConnected(
+          data.connected
+        );
       } catch {
         setBlockHeight(null);
         setBestBlockHash(null);
-        setTestnetConnected(false);
+
+        setTestnetConnected(
+          false
+        );
       }
     }
 
@@ -136,40 +244,127 @@ export default function Home() {
   }, []);
 
   /*
-    NEW:
-    15 SECOND BETTING COUNTDOWN
+    BETTING COUNTDOWN
 
-    This is visual only for now.
-
-    It does NOT automatically spin or
-    lock a block when it reaches zero.
+    15 → 14 → 13 → ... → 0
   */
   useEffect(() => {
-    if (waitingForBlock || spinning) {
+    if (
+      waitingForBlock ||
+      spinning ||
+      lockingRound
+    ) {
       return;
     }
 
-    if (bettingTimeLeft <= 0) {
+    if (
+      bettingTimeLeft <= 0
+    ) {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      setBettingTimeLeft((current) =>
-        Math.max(0, current - 1)
-      );
-    }, 1000);
+    const timer =
+      window.setTimeout(() => {
+        setBettingTimeLeft(
+          (current) =>
+            Math.max(
+              0,
+              current - 1
+            )
+        );
+      }, 1000);
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(
+        timer
+      );
     };
   }, [
     bettingTimeLeft,
     waitingForBlock,
     spinning,
+    lockingRound,
   ]);
 
   /*
-    WATCH THE LOCKED FUTURE BLOCK
+    IF THE PLAYER MISSES
+    THE 15-SECOND DEADLINE,
+    OPEN A FRESH ROUND
+    AFTER 3 SECONDS.
+  */
+  useEffect(() => {
+    if (
+      bettingTimeLeft !== 0
+    ) {
+      return;
+    }
+
+    if (
+      waitingForBlock ||
+      spinning ||
+      lockingRound
+    ) {
+      return;
+    }
+
+    const resetTimer =
+      window.setTimeout(() => {
+        setBettingTimeLeft(
+          BETTING_SECONDS
+        );
+
+        setSelectedBet(null);
+
+        setResult(null);
+        setOutcome(null);
+      }, 3000);
+
+    return () => {
+      window.clearTimeout(
+        resetTimer
+      );
+    };
+  }, [
+    bettingTimeLeft,
+    waitingForBlock,
+    spinning,
+    lockingRound,
+  ]);
+
+  /*
+    WAITING TIMER
+
+    Starts at 00:00 when
+    the future block is locked.
+
+    00:01
+    00:02
+    00:03
+    ...
+  */
+  useEffect(() => {
+    if (!waitingForBlock) {
+      return;
+    }
+
+    const timer =
+      window.setInterval(() => {
+        setWaitingSeconds(
+          (current) =>
+            current + 1
+        );
+      }, 1000);
+
+    return () => {
+      window.clearInterval(
+        timer
+      );
+    };
+  }, [waitingForBlock]);
+
+  /*
+    WATCH THE LOCKED
+    FUTURE ZCASH BLOCK
   */
   useEffect(() => {
     if (
@@ -180,53 +375,82 @@ export default function Home() {
     }
 
     async function checkTargetBlock() {
-      if (resolvingBlockRef.current) {
+      if (
+        resolvingBlockRef.current
+      ) {
         return;
       }
 
       try {
-        const response = await fetch(
-          `/api/zcash-block/${targetBlockHeight}`,
-          {
-            cache: "no-store",
-          }
-        );
+        const response =
+          await fetch(
+            `/api/zcash-block/${targetBlockHeight}`,
+            {
+              cache:
+                "no-store",
+            }
+          );
 
-        const data = await response.json();
+        const data =
+          await response.json();
 
-        if (!data.found || !data.hash) {
+        if (
+          !data.found ||
+          !data.hash
+        ) {
           return;
         }
 
-        resolvingBlockRef.current = true;
+        resolvingBlockRef.current =
+          true;
 
         /*
-          ZCASH HASH → VERIFIED POCKET
+          BLOCK HASH
+              ↓
+          VERIFIER
+              ↓
+          POCKET
         */
         const pocket =
-          verifyBlockHash(data.hash);
+          verifyBlockHash(
+            data.hash
+          );
 
         if (pocket === null) {
-          resolvingBlockRef.current = false;
+          resolvingBlockRef.current =
+            false;
+
           return;
         }
 
-        setRoundBlockHash(data.hash);
-        setRoundVerifiedPocket(pocket);
+        setRoundBlockHash(
+          data.hash
+        );
 
-        setWaitingForBlock(false);
+        setRoundVerifiedPocket(
+          pocket
+        );
+
+        setWaitingForBlock(
+          false
+        );
 
         /*
-          FIND VERIFIED POCKET
-          ON THE WHEEL
+          FIND THE POCKET'S
+          POSITION ON THE WHEEL
         */
         const resultIndex =
           wheelNumbers.findIndex(
-            (number) => number === pocket
+            (number) =>
+              number === pocket
           );
 
-        if (resultIndex === -1) {
-          resolvingBlockRef.current = false;
+        if (
+          resultIndex === -1
+        ) {
+          resolvingBlockRef.current =
+            false;
+
           return;
         }
 
@@ -234,119 +458,209 @@ export default function Home() {
           START VISUAL SPIN
         */
         setSpinning(true);
+
         setResult(null);
         setOutcome(null);
 
         const segmentAngle =
-          360 / wheelNumbers.length;
+          360 /
+          wheelNumbers.length;
 
-        setRotation((current) => {
-          const currentPosition =
-            current % 360;
+        setRotation(
+          (current) => {
+            const currentPosition =
+              current % 360;
 
-          const targetPosition =
-            -(resultIndex * segmentAngle);
+            const targetPosition =
+              -(
+                resultIndex *
+                segmentAngle
+              );
 
-          const adjustment =
-            targetPosition -
-            currentPosition;
+            const adjustment =
+              targetPosition -
+              currentPosition;
 
-          return (
-            current +
-            1440 +
-            adjustment
-          );
-        });
+            return (
+              current +
+              1440 +
+              adjustment
+            );
+          }
+        );
 
         /*
-          WAIT FOR WHEEL ANIMATION
+          WHEEL ANIMATION
+          TAKES 3 SECONDS
         */
-        setTimeout(() => {
-          setSpinning(false);
-          setResult(pocket);
+        window.setTimeout(
+          () => {
+            setSpinning(false);
 
-          const resultColor =
-            getResultColor(pocket);
+            setResult(
+              pocket
+            );
 
-          let won = false;
+            const resultColor =
+              getResultColor(
+                pocket
+              );
 
-          if (roundBet === "RED") {
-            won =
-              resultColor === "RED";
-          } else if (
-            roundBet === "BLACK"
-          ) {
-            won =
-              resultColor === "BLACK";
-          } else if (
-            roundBet === "ODD"
-          ) {
-            won =
-              typeof pocket === "number" &&
-              pocket !== 0 &&
-              pocket % 2 !== 0;
-          } else if (
-            roundBet === "EVEN"
-          ) {
-            won =
-              typeof pocket === "number" &&
-              pocket !== 0 &&
-              pocket % 2 === 0;
-          }
+            let won = false;
 
-          if (won) {
-            setOutcome("WIN");
+            if (
+              roundBet ===
+              "RED"
+            ) {
+              won =
+                resultColor ===
+                "RED";
+            } else if (
+              roundBet ===
+              "BLACK"
+            ) {
+              won =
+                resultColor ===
+                "BLACK";
+            } else if (
+              roundBet ===
+              "ODD"
+            ) {
+              won =
+                typeof pocket ===
+                  "number" &&
+                pocket !== 0 &&
+                pocket % 2 !==
+                  0;
+            } else if (
+              roundBet ===
+              "EVEN"
+            ) {
+              won =
+                typeof pocket ===
+                  "number" &&
+                pocket !== 0 &&
+                pocket % 2 ===
+                  0;
+            }
 
-            if (roundWager !== null) {
-              setBalance(
-                (current) =>
-                  current +
-                  roundWager * 2
+            if (won) {
+              setOutcome(
+                "WIN"
+              );
+
+              if (
+                roundWager !==
+                null
+              ) {
+                setBalance(
+                  (current) =>
+                    current +
+                    roundWager *
+                      2
+                );
+              }
+            } else {
+              setOutcome(
+                "LOSS"
               );
             }
-          } else {
-            setOutcome("LOSS");
-          }
 
-          if (
-            roundBet !== null &&
-            roundWager !== null
-          ) {
-            setHistory((current) => [
-              {
-                result: pocket,
-                bet: roundBet,
-                amount: roundWager,
-                outcome: won
-                  ? "WIN"
-                  : "LOSS",
+            if (
+              roundBet !==
+                null &&
+              roundWager !==
+                null
+            ) {
+              setHistory(
+                (current) => [
+                  {
+                    result:
+                      pocket,
+
+                    bet:
+                      roundBet,
+
+                    amount:
+                      roundWager,
+
+                    outcome: won
+                      ? "WIN"
+                      : "LOSS",
+                  },
+
+                  ...current,
+                ]
+              );
+            }
+
+            resolvingBlockRef.current =
+              false;
+
+            /*
+              RESULT STAYS VISIBLE
+              FOR 2 SECONDS.
+
+              THEN OPEN NEW
+              15 SECOND ROUND.
+            */
+            window.setTimeout(
+              () => {
+                setBettingTimeLeft(
+                  BETTING_SECONDS
+                );
+
+                setWaitingSeconds(
+                  0
+                );
+
+                setSelectedBet(
+                  null
+                );
+
+                setRoundBet(
+                  null
+                );
+
+                setRoundWager(
+                  null
+                );
+
+                setResult(
+                  null
+                );
+
+                setOutcome(
+                  null
+                );
               },
-              ...current,
-            ]);
-          }
-
-          resolvingBlockRef.current =
-            false;
-        }, 3000);
+              2000
+            );
+          },
+          3000
+        );
       } catch {
         /*
-          If the request fails,
-          keep waiting.
+          Keep waiting.
 
-          The next check will retry.
+          The next poll will
+          try again.
         */
       }
     }
 
     checkTargetBlock();
 
-    const interval = window.setInterval(
-      checkTargetBlock,
-      5000
-    );
+    const interval =
+      window.setInterval(
+        checkTargetBlock,
+        5000
+      );
 
     return () => {
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval
+      );
     };
   }, [
     waitingForBlock,
@@ -357,44 +671,73 @@ export default function Home() {
 
   /*
     MAIN SPIN BUTTON
-
-    NO Math.random().
-
-    It locks the NEXT Zcash block.
   */
   async function handleSpin() {
-    const wager = Number(betAmount);
+    const wager =
+      Number(betAmount);
 
     if (spinning) return;
-    if (waitingForBlock) return;
-    if (lockingRound) return;
-    if (selectedBet === null) return;
-    if (!Number.isFinite(wager)) return;
+
+    if (waitingForBlock)
+      return;
+
+    if (lockingRound)
+      return;
+
+    if (bettingClosed)
+      return;
+
+    if (
+      selectedBet === null
+    ) {
+      return;
+    }
+
+    if (
+      !Number.isFinite(
+        wager
+      )
+    ) {
+      return;
+    }
+
     if (wager < 1) return;
-    if (wager > balance) return;
+
+    if (wager > balance)
+      return;
 
     setLockingRound(true);
 
     try {
       /*
-        Get the latest block at the
-        moment SPIN is clicked.
+        GET THE REAL CURRENT
+        BLOCK WHEN SPIN IS CLICKED
       */
-      const response = await fetch(
-        "/api/zcash-status",
-        {
-          cache: "no-store",
-        }
-      );
+      const response =
+        await fetch(
+          "/api/zcash-status",
+          {
+            cache:
+              "no-store",
+          }
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (
         !data.connected ||
-        typeof data.height !== "number"
+        typeof data.height !==
+          "number"
       ) {
-        setTestnetConnected(false);
-        setLockingRound(false);
+        setTestnetConnected(
+          false
+        );
+
+        setLockingRound(
+          false
+        );
+
         return;
       }
 
@@ -404,20 +747,30 @@ export default function Home() {
       const nextBlock =
         currentBlock + 1;
 
-      setBlockHeight(currentBlock);
-
-      setBestBlockHash(
-        data.bestBlockHash ?? null
+      setBlockHeight(
+        currentBlock
       );
 
-      setTestnetConnected(true);
+      setBestBlockHash(
+        data.bestBlockHash ??
+          null
+      );
+
+      setTestnetConnected(
+        true
+      );
 
       /*
         FREEZE THIS ROUND'S
         TEST PREDICTION
       */
-      setRoundBet(selectedBet);
-      setRoundWager(wager);
+      setRoundBet(
+        selectedBet
+      );
+
+      setRoundWager(
+        wager
+      );
 
       /*
         UPDATE TEST BALANCE
@@ -428,14 +781,30 @@ export default function Home() {
       );
 
       /*
+        BETTING IS NOW CLOSED
+      */
+      setBettingTimeLeft(0);
+
+      /*
+        WAIT TIMER STARTS
+        FROM ZERO
+      */
+      setWaitingSeconds(0);
+
+      /*
         LOCK FUTURE BLOCK
       */
       setTargetBlockHeight(
         nextBlock
       );
 
-      setRoundBlockHash(null);
-      setRoundVerifiedPocket(null);
+      setRoundBlockHash(
+        null
+      );
+
+      setRoundVerifiedPocket(
+        null
+      );
 
       setResult(null);
       setOutcome(null);
@@ -443,18 +812,26 @@ export default function Home() {
       resolvingBlockRef.current =
         false;
 
-      setWaitingForBlock(true);
-      setLockingRound(false);
+      setWaitingForBlock(
+        true
+      );
+
+      setLockingRound(
+        false
+      );
     } catch {
-      setTestnetConnected(false);
-      setLockingRound(false);
+      setTestnetConnected(
+        false
+      );
+
+      setLockingRound(
+        false
+      );
     }
   }
 
   return (
     <main className="game">
-
-      {/* HEADER */}
 
       <header className="topbar">
         <div>
@@ -468,6 +845,7 @@ export default function Home() {
         </div>
 
         <div className="topbar-info">
+
           <div className="balance">
             <span>
               Balance
@@ -488,33 +866,48 @@ export default function Home() {
 
             <strong>
               BLOCK:{" "}
-              {blockHeight ?? "—"}
+              {blockHeight ??
+                "—"}
             </strong>
           </div>
+
         </div>
       </header>
 
-      {/* ROULETTE WHEEL */}
-
       <section className="roulette-section">
+
         <RouletteWheel
           rotation={rotation}
           spinning={spinning}
         />
 
         {waitingForBlock ? (
-          <p className="wheel-label">
-            WAITING FOR ZCASH BLOCK{" "}
-            {targetBlockHeight ?? "—"}
-          </p>
+          <div>
+            <p className="wheel-label">
+              WAITING FOR ZCASH
+              BLOCK{" "}
+              {targetBlockHeight ??
+                "—"}
+            </p>
+
+            <p className="wheel-label">
+              WAIT TIME:{" "}
+              {formatTime(
+                waitingSeconds
+              )}
+            </p>
+          </div>
         ) : result === null ? (
           <p className="wheel-label">
             {spinning
               ? "Spinning..."
-              : "Waiting for spin"}
+              : bettingClosed
+              ? "Betting closed"
+              : "Waiting for prediction"}
           </p>
         ) : (
           <div className="spin-result">
+
             <span>
               RESULT
             </span>
@@ -529,19 +922,22 @@ export default function Home() {
               )}
             </em>
 
-            {outcome !== null && (
+            {outcome !==
+              null && (
               <p className="round-outcome">
                 {outcome}
               </p>
             )}
+
           </div>
         )}
+
       </section>
 
-      {/* BLOCKCHAIN VERIFICATION */}
-
       <section className="verification-panel">
+
         <div className="verification-header">
+
           <span>
             BLOCKCHAIN VERIFICATION
           </span>
@@ -553,6 +949,7 @@ export default function Home() {
               ? "VERIFIED"
               : "READY"}
           </strong>
+
         </div>
 
         <div className="verification-row">
@@ -561,7 +958,8 @@ export default function Home() {
           </span>
 
           <strong>
-            {blockHeight ?? "—"}
+            {blockHeight ??
+              "—"}
           </strong>
         </div>
 
@@ -586,7 +984,8 @@ export default function Home() {
           </span>
 
           <strong>
-            {targetBlockHeight ?? "—"}
+            {targetBlockHeight ??
+              "—"}
           </strong>
         </div>
 
@@ -617,33 +1016,49 @@ export default function Home() {
               "—"}
           </strong>
         </div>
-      </section>
 
-      {/* BET PANEL */}
-
-      <section className="bet-panel">
-
-        {/* NEW BETTING TIMER */}
-
-        <div className="betting-timer">
+        <div className="verification-row">
           <span>
-            BETTING CLOSES IN
+            Block Wait Time
           </span>
 
           <strong>
-            00:
-            {String(
-              bettingTimeLeft
-            ).padStart(2, "0")}
+            {waitingForBlock
+              ? formatTime(
+                  waitingSeconds
+                )
+              : "—"}
           </strong>
         </div>
 
+      </section>
+
+      <section className="bet-panel">
+
+        <div className="betting-timer">
+
+          <span>
+            {bettingClosed
+              ? "BETTING CLOSED"
+              : "BETTING CLOSES IN"}
+          </span>
+
+          <strong>
+            {formatTime(
+              bettingTimeLeft
+            )}
+          </strong>
+
+        </div>
+
         <div className="bet-amount">
+
           <span>
             Bet amount
           </span>
 
           <div className="amount-control">
+
             <button
               onClick={() =>
                 setBetAmount(
@@ -652,7 +1067,8 @@ export default function Home() {
                       Math.max(
                         1,
                         Number(
-                          current || 0
+                          current ||
+                            0
                         ) - 1
                       )
                     )
@@ -660,7 +1076,9 @@ export default function Home() {
               }
               disabled={
                 spinning ||
-                waitingForBlock
+                waitingForBlock ||
+                lockingRound ||
+                bettingClosed
               }
             >
               -
@@ -671,14 +1089,19 @@ export default function Home() {
               min="1"
               step="1"
               value={betAmount}
-              onChange={(event) =>
+              onChange={(
+                event
+              ) =>
                 setBetAmount(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
               disabled={
                 spinning ||
-                waitingForBlock
+                waitingForBlock ||
+                lockingRound ||
+                bettingClosed
               }
             />
 
@@ -692,24 +1115,27 @@ export default function Home() {
                   (current) =>
                     String(
                       Number(
-                        current || 0
+                        current ||
+                          0
                       ) + 1
                     )
                 )
               }
               disabled={
                 spinning ||
-                waitingForBlock
+                waitingForBlock ||
+                lockingRound ||
+                bettingClosed
               }
             >
               +
             </button>
+
           </div>
         </div>
 
-        {/* PREDICTION */}
-
         <div className="prediction">
+
           <div className="prediction-header">
             <span>
               PREDICT THE RESULT
@@ -720,7 +1146,8 @@ export default function Home() {
 
             <button
               className={
-                selectedBet === "RED"
+                selectedBet ===
+                "RED"
                   ? "selected"
                   : ""
               }
@@ -731,7 +1158,9 @@ export default function Home() {
               }
               disabled={
                 spinning ||
-                waitingForBlock
+                waitingForBlock ||
+                lockingRound ||
+                bettingClosed
               }
             >
               RED
@@ -751,7 +1180,9 @@ export default function Home() {
               }
               disabled={
                 spinning ||
-                waitingForBlock
+                waitingForBlock ||
+                lockingRound ||
+                bettingClosed
               }
             >
               BLACK
@@ -759,7 +1190,8 @@ export default function Home() {
 
             <button
               className={
-                selectedBet === "ODD"
+                selectedBet ===
+                "ODD"
                   ? "selected"
                   : ""
               }
@@ -770,7 +1202,9 @@ export default function Home() {
               }
               disabled={
                 spinning ||
-                waitingForBlock
+                waitingForBlock ||
+                lockingRound ||
+                bettingClosed
               }
             >
               ODD
@@ -790,7 +1224,9 @@ export default function Home() {
               }
               disabled={
                 spinning ||
-                waitingForBlock
+                waitingForBlock ||
+                lockingRound ||
+                bettingClosed
               }
             >
               EVEN
@@ -799,8 +1235,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* MAIN SPIN BUTTON */}
-
         <button
           className="spin-button"
           onClick={handleSpin}
@@ -808,7 +1242,9 @@ export default function Home() {
             spinning ||
             waitingForBlock ||
             lockingRound ||
-            selectedBet === null ||
+            bettingClosed ||
+            selectedBet ===
+              null ||
             invalidBet ||
             !testnetConnected
           }
@@ -819,18 +1255,21 @@ export default function Home() {
             ? `WAITING FOR BLOCK ${targetBlockHeight}`
             : spinning
             ? "SPINNING..."
+            : bettingClosed
+            ? "BETTING CLOSED"
             : "SPIN"}
         </button>
+
       </section>
 
-      {/* HISTORY */}
-
       <section className="history">
+
         <h2>
           Recent Spins
         </h2>
 
-        {history.length === 0 ? (
+        {history.length ===
+        0 ? (
           <div className="history-empty">
             No spins yet.
           </div>
@@ -838,24 +1277,33 @@ export default function Home() {
           <div className="history-list">
 
             {history.map(
-              (round, index) => (
+              (
+                round,
+                index
+              ) => (
                 <div
                   className="history-item"
                   key={`${round.result}-${index}`}
                 >
+
                   <div
                     className={`history-number ${getResultColor(
                       round.result
                     ).toLowerCase()}`}
                   >
-                    {round.result}
+                    {
+                      round.result
+                    }
                   </div>
 
                   <div className="history-details">
+
                     <span>
                       BET:{" "}
                       {round.bet} •{" "}
-                      {round.amount}{" "}
+                      {
+                        round.amount
+                      }{" "}
                       TEST ZEC
                     </span>
 
@@ -879,13 +1327,16 @@ export default function Home() {
                         ? `WIN • +${round.amount} TEST ZEC`
                         : `LOSS • -${round.amount} TEST ZEC`}
                     </strong>
+
                   </div>
+
                 </div>
               )
             )}
 
           </div>
         )}
+
       </section>
 
     </main>
