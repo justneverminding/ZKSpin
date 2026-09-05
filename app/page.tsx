@@ -159,8 +159,10 @@ setHistory((current) => [
 ]);
 }, 3000);
 }
+  
   return (
     <main className="game">
+      
       <header className="topbar">
         <div>
           <h1 className="brand">ZKSPIN</h1>
@@ -183,8 +185,10 @@ setHistory((current) => [
     BLOCK: {blockHeight ?? "—"}
   </strong>
 </div>
+
+</div>
         
-      </header>
+</header>
 
       <section className="roulette-section">
         <RouletteWheel
