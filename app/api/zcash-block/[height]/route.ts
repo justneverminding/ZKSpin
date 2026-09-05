@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const response = await fetch(
-      `https://api.testnet.cipherscan.app/api/blocks/${height}`,
+      `https://api.testnet.cipherscan.app/api/block/${height}`,
       {
         cache: "no-store",
       }
@@ -37,9 +37,11 @@ export async function GET(
       connected: true,
       found: true,
       height,
-      hash: data.hash,
+      hash: data.hash ?? null,
     });
-  } catch {
+  } catch (error) {
+    console.error("CipherScan block lookup error:", error);
+
     return NextResponse.json(
       {
         connected: false,
