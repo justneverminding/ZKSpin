@@ -33,6 +33,7 @@ export default function Home() {
 
   function handleSpin() {
   if (spinning) return;
+  if (selectedBet === null) return;
 
   setSpinning(true);
   setResult(null);
@@ -127,10 +128,10 @@ export default function Home() {
     <button>EVEN</button>
   </div>
 </div>
-        <button
+   <button
   className="spin-button"
   onClick={handleSpin}
-  disabled={spinning}
+  disabled={spinning || selectedBet === null}
 >
   {spinning ? "SPINNING..." : "SPIN"}
 </button>
