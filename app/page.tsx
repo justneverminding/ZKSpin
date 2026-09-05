@@ -30,6 +30,8 @@ export default function Home() {
   useState<number | null>(null);
     const [selectedBet, setSelectedBet] =
     useState<"RED" | null>(null);
+  const [outcome, setOutcome] =
+  useState<"WIN" | "LOSS" | null>(null);
 
   function handleSpin() {
   if (spinning) return;
@@ -37,6 +39,7 @@ export default function Home() {
 
   setSpinning(true);
   setResult(null);
+  setOutcome(null);
 
   const resultIndex = Math.floor(
     Math.random() * wheelNumbers.length
@@ -59,7 +62,14 @@ export default function Home() {
  setTimeout(() => {
   setSpinning(false);
   setResult(resultNumber);
+   
+const resultColor = getResultColor(resultNumber);
 
+if (selectedBet === resultColor) {
+  setOutcome("WIN");
+} else {
+  setOutcome("LOSS");
+}
   setHistory((current) => [
     resultNumber,
     ...current,
