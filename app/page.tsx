@@ -83,18 +83,6 @@ type StoredState = {
 
 const BETTING_SECONDS = 30;
 
-/*
-  ZKSpin TESTNET demo confirmation policy.
-
-  We currently require 1 block confirmation.
-
-  Target N
-  Tip N = 1/1 VERIFIED
-
-  This is actual block depth.
-  It is NOT the number of times
-  CipherScan returned the same hash.
-*/
 const CONFIRMATIONS_REQUIRED = 1;
 
 const POLL_INTERVAL_MS = 5000;
@@ -271,24 +259,12 @@ export default function Home() {
   ] =
     useState<string | null>(null);
 
-  /*
-    LOCKED ROUND DATA
-  */
-
   const [
     targetBlockHeight,
     setTargetBlockHeight,
   ] =
     useState<number | null>(null);
 
-  /*
-    Candidate hash for the locked
-    target block.
-
-    Once the required block depth
-    is reached, this exact hash is
-    passed to the roulette verifier.
-  */
   const [
     roundBlockHash,
     setRoundBlockHash,
@@ -329,10 +305,6 @@ export default function Home() {
       null
     );
 
-  /*
-    TIMERS
-  */
-
   const [
     bettingTimeLeft,
     setBettingTimeLeft,
@@ -363,22 +335,11 @@ export default function Home() {
   ] =
     useState<number | null>(null);
 
-  /*
-    CONFIRMATION ENGINE
-  */
-
   const [
     confirmationDepth,
     setConfirmationDepth,
   ] =
     useState(0);
-
-  /*
-    INTERNAL DIAGNOSTICS.
-
-    These are intentionally NOT
-    displayed to the player.
-  */
 
   const [
     sourceTipHeight,
@@ -419,11 +380,6 @@ export default function Home() {
   const [history, setHistory] =
     useState<HistoryEntry[]>([]);
 
-  /*
-    Prevent duplicate resolution
-    and overlapping polls.
-  */
-
   const resolvingBlockRef =
     useRef(false);
 
@@ -448,10 +404,6 @@ export default function Home() {
 
   const spinning =
     roundPhase === "SPINNING";
-
-  /*
-    START NEW ROUND
-  */
 
   const startNewRound =
     useCallback(() => {
@@ -526,10 +478,6 @@ export default function Home() {
         false;
     }, []);
 
-  /*
-    RESTORE SAVED BROWSER STATE
-  */
-
   useEffect(() => {
     const raw =
       window.localStorage.getItem(
@@ -538,9 +486,7 @@ export default function Home() {
 
     if (!raw) {
       startNewRound();
-
       setHydrated(true);
-
       return;
     }
 
@@ -557,9 +503,7 @@ export default function Home() {
         saved.version !== 2
       ) {
         startNewRound();
-
         setHydrated(true);
-
         return;
       }
 
@@ -664,10 +608,6 @@ export default function Home() {
           null
       );
 
-      /*
-        RESTORE ACTIVE BLOCK ROUND
-      */
-
       const activeBlockRound =
         saved.roundPhase ===
           "WAITING" ||
@@ -732,13 +672,8 @@ export default function Home() {
         }
 
         setHydrated(true);
-
         return;
       }
-
-      /*
-        RESTORE RESULT DISPLAY
-      */
 
       if (
         saved.roundPhase ===
@@ -767,13 +702,8 @@ export default function Home() {
         );
 
         setHydrated(true);
-
         return;
       }
-
-      /*
-        RESTORE ACTIVE BETTING TIMER
-      */
 
       if (
         saved.roundPhase ===
@@ -813,12 +743,10 @@ export default function Home() {
         );
 
         setHydrated(true);
-
         return;
       }
 
       startNewRound();
-
       setHydrated(true);
     } catch {
       window.localStorage.removeItem(
@@ -826,14 +754,9 @@ export default function Home() {
       );
 
       startNewRound();
-
       setHydrated(true);
     }
   }, [startNewRound]);
-
-  /*
-    SAVE STATE
-  */
 
   useEffect(() => {
     if (!hydrated) {
@@ -921,10 +844,6 @@ export default function Home() {
     blockFoundAt,
   ]);
 
-  /*
-    LOAD CURRENT ZCASH STATUS
-  */
-
   useEffect(() => {
     async function loadZcashStatus() {
       try {
@@ -959,9 +878,7 @@ export default function Home() {
         );
       } catch {
         setBlockHeight(null);
-
         setBestBlockHash(null);
-
         setTestnetConnected(
           false
         );
@@ -970,10 +887,6 @@ export default function Home() {
 
     loadZcashStatus();
   }, []);
-
-  /*
-    BETTING TIMER
-  */
 
   useEffect(() => {
     if (
@@ -1022,10 +935,6 @@ export default function Home() {
     bettingEndsAt,
   ]);
 
-  /*
-    MISSED ROUND
-  */
-
   useEffect(() => {
     if (
       !hydrated ||
@@ -1061,10 +970,6 @@ export default function Home() {
     bettingTimeLeft,
     startNewRound,
   ]);
-
-  /*
-    BLOCK WAIT TIMER
-  */
 
   useEffect(() => {
     const active =
@@ -1115,10 +1020,6 @@ export default function Home() {
     waitingStartedAt,
   ]);
 
-  /*
-    END RESULT DISPLAY
-  */
-
   useEffect(() => {
     if (
       roundPhase !==
@@ -1135,7 +1036,6 @@ export default function Home() {
 
     if (remaining <= 0) {
       startNewRound();
-
       return;
     }
 
@@ -1158,13 +1058,6 @@ export default function Home() {
 
   /*
     BLOCK CONFIRMATION ENGINE
-
-    Always checks the SAME locked
-    target height.
-
-    With the current TESTNET policy,
-    target N becomes verified as
-    soon as it appears at depth 1.
   */
 
   useEffect(() => {
@@ -1201,52 +1094,22 @@ export default function Home() {
       );
 
       try {
-        /*
-          Fetch the locked block
-          and current source tip
-          at the same time.
-        */
+        const response =
+          await fetch(
+            `/api/zcash-block/${targetBlockHeight}`,
+            {
+              cache:
+                "no-store",
+            }
+          );
 
-        const [
-          blockResponse,
-          statusResponse,
-        ] =
-          await Promise.all([
-            fetch(
-              `/api/zcash-block/${targetBlockHeight}`,
-              {
-                cache:
-                  "no-store",
-              }
-            ),
-
-            fetch(
-              "/api/zcash-status",
-              {
-                cache:
-                  "no-store",
-              }
-            ),
-          ]);
-
-        const [
-          blockData,
-          statusData,
-        ] =
-          await Promise.all([
-            blockResponse.json(),
-            statusResponse.json(),
-          ]);
-
-        /*
-          STATUS SOURCE UNAVAILABLE
-        */
+        const data =
+          await response.json();
 
         if (
-          !statusResponse.ok ||
-          !statusData.connected ||
-          typeof statusData.height !==
-            "number"
+          data.status ===
+            "SOURCE_UNAVAILABLE" ||
+          !data.connected
         ) {
           setSourceErrors(
             (current) =>
@@ -1264,75 +1127,70 @@ export default function Home() {
           return;
         }
 
-        const tipHeight =
-          statusData.height;
-
-        setSourceTipHeight(
-          tipHeight
-        );
-
-        setBlockHeight(
-          tipHeight
-        );
-
-        setBestBlockHash(
-          statusData.bestBlockHash ??
-            null
-        );
-
         setTestnetConnected(
           true
         );
 
-        /*
-          TARGET BLOCK NOT AVAILABLE
-        */
+        if (
+          typeof data.tipHeight ===
+          "number"
+        ) {
+          setSourceTipHeight(
+            data.tipHeight
+          );
+
+          setBlockHeight(
+            data.tipHeight
+          );
+        }
 
         if (
-          !blockResponse.ok ||
-          !blockData.found ||
-          !blockData.hash
+          data.status ===
+          "NOT_MINED"
         ) {
           setRoundPhase(
             "WAITING"
+          );
+
+          setSourceState(
+            "WAITING_FOR_BLOCK"
           );
 
           setConfirmationDepth(
             0
           );
 
-          /*
-            If CipherScan's status endpoint
-            says the chain is already at or
-            beyond the target, but the block
-            endpoint cannot return that target,
-            classify it as source lag.
-          */
+          return;
+        }
 
-          if (
-            tipHeight >=
-            targetBlockHeight
-          ) {
-            setSourceState(
-              "SOURCE_LAG"
-            );
-          } else {
-            setSourceState(
-              "WAITING_FOR_BLOCK"
-            );
-          }
+        if (
+          data.status ===
+          "DATA_SOURCE_LAG"
+        ) {
+          setRoundPhase(
+            "WAITING"
+          );
 
+          setSourceState(
+            "SOURCE_LAG"
+          );
+
+          return;
+        }
+
+        if (
+          data.status !==
+            "FOUND" ||
+          !data.found ||
+          !data.hash
+        ) {
           return;
         }
 
         const observedHash =
           String(
-            blockData.hash
+            data.hash
           ).toLowerCase();
-
-        /*
-          FIRST OBSERVATION
-        */
 
         if (
           roundBlockHash ===
@@ -1346,13 +1204,6 @@ export default function Home() {
             Date.now()
           );
         }
-
-        /*
-          REORG DETECTION
-
-          Same height,
-          different hash.
-        */
 
         if (
           roundBlockHash !==
@@ -1382,12 +1233,11 @@ export default function Home() {
           );
 
           const newDepth =
-            Math.max(
-              1,
-              tipHeight -
-                targetBlockHeight +
-                1
-            );
+            typeof data
+              .confirmationDepth ===
+            "number"
+              ? data.confirmationDepth
+              : 1;
 
           setConfirmationDepth(
             newDepth
@@ -1396,26 +1246,16 @@ export default function Home() {
           return;
         }
 
-        /*
-          ACTUAL BLOCK DEPTH
-        */
-
         const depth =
-          Math.max(
-            1,
-            tipHeight -
-              targetBlockHeight +
-              1
-          );
+          typeof data
+            .confirmationDepth ===
+          "number"
+            ? data.confirmationDepth
+            : 1;
 
         setConfirmationDepth(
           depth
         );
-
-        /*
-          WAIT IF REQUIRED DEPTH
-          HAS NOT BEEN REACHED.
-        */
 
         if (
           depth <
@@ -1431,13 +1271,6 @@ export default function Home() {
 
           return;
         }
-
-        /*
-          VERIFIED.
-
-          For the current TESTNET MVP,
-          this happens at 1/1.
-        */
 
         resolvingBlockRef.current =
           true;
@@ -1456,7 +1289,6 @@ export default function Home() {
         ) {
           resolvingBlockRef.current =
             false;
-
           return;
         }
 
@@ -1479,20 +1311,14 @@ export default function Home() {
         ) {
           resolvingBlockRef.current =
             false;
-
           return;
         }
-
-        /*
-          VERIFIED WHEEL SPIN
-        */
 
         setRoundPhase(
           "SPINNING"
         );
 
         setResult(null);
-
         setOutcome(null);
 
         const segmentAngle =
@@ -1522,10 +1348,6 @@ export default function Home() {
           }
         );
 
-        /*
-          TEST ZEC DEMO RESULT
-        */
-
         window.setTimeout(
           () => {
             if (
@@ -1536,7 +1358,6 @@ export default function Home() {
             ) {
               resolvingBlockRef.current =
                 false;
-
               return;
             }
 
@@ -1555,10 +1376,6 @@ export default function Home() {
                 ? "WIN"
                 : "LOSS"
             );
-
-            /*
-              TEST BALANCE ONLY.
-            */
 
             if (
               !roundSettled
@@ -1661,10 +1478,6 @@ export default function Home() {
     roundSettled,
   ]);
 
-  /*
-    SUBMIT TEST ROUND
-  */
-
   async function handleSpin() {
     const wager =
       Number(betAmount);
@@ -1694,11 +1507,6 @@ export default function Home() {
     );
 
     try {
-      /*
-        Read the current testnet tip
-        when the round locks.
-      */
-
       const response =
         await fetch(
           "/api/zcash-status",
@@ -1730,10 +1538,6 @@ export default function Home() {
       const currentBlock =
         data.height;
 
-      /*
-        LOCK FUTURE BLOCK N + 1.
-      */
-
       const nextBlock =
         currentBlock + 1;
 
@@ -1750,10 +1554,6 @@ export default function Home() {
         true
       );
 
-      /*
-        Freeze test prediction.
-      */
-
       setRoundBet(
         selectedBet
       );
@@ -1762,18 +1562,10 @@ export default function Home() {
         wager
       );
 
-      /*
-        TEST BALANCE ONLY.
-      */
-
       setBalance(
         (current) =>
           current - wager
       );
-
-      /*
-        Close betting.
-      */
 
       setBettingEndsAt(
         null
@@ -1794,10 +1586,6 @@ export default function Home() {
         0
       );
 
-      /*
-        LOCK TARGET HEIGHT.
-      */
-
       setTargetBlockHeight(
         nextBlock
       );
@@ -1809,10 +1597,6 @@ export default function Home() {
       setRoundVerifiedPocket(
         null
       );
-
-      /*
-        Reset confirmation state.
-      */
 
       setConfirmationDepth(
         0
