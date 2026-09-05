@@ -12,7 +12,15 @@ type BetType =
   | "ODD"
   | "EVEN";
 
-const BETTING_SECONDS = 15;
+type RoundPhase =
+  | "BETTING"
+  | "LOCKING"
+  | "WAITING"
+  | "SPINNING"
+  | "RESULT"
+  | "MISSED";
+
+const BETTING_SECONDS = 30;
 
 const wheelNumbers: RouletteResult[] = [
   0, 28, 9, 26, 30, 11, 7, 20, 32, 17,
@@ -65,8 +73,8 @@ export default function Home() {
   const [rotation, setRotation] =
     useState(0);
 
-  const [spinning, setSpinning] =
-    useState(false);
+  const [roundPhase, setRoundPhase] =
+    useState<RoundPhase>("BETTING");
 
   const [result, setResult] =
     useState<RouletteResult | null>(
@@ -118,18 +126,6 @@ export default function Home() {
     );
 
   const [
-    waitingForBlock,
-    setWaitingForBlock,
-  ] =
-    useState(false);
-
-  const [
-    lockingRound,
-    setLockingRound,
-  ] =
-    useState(false);
-
-  const [
     roundBet,
     setRoundBet,
   ] =
@@ -155,19 +151,12 @@ export default function Home() {
       null
     );
 
-  /*
-    BETTING TIMER
-  */
   const [
     bettingTimeLeft,
     setBettingTimeLeft,
   ] =
     useState(BETTING_SECONDS);
 
-  /*
-    HOW LONG WE HAVE BEEN
-    WAITING FOR THE ZCASH BLOCK
-  */
   const [
     waitingSeconds,
     setWaitingSeconds,
@@ -198,11 +187,18 @@ export default function Home() {
     wagerAmount < 1 ||
     wagerAmount > balance;
 
-  const bettingClosed =
-    bettingTimeLeft === 0;
+  const bettingOpen =
+    roundPhase === "BETTING" &&
+    bettingTimeLeft > 0;
+
+  const spinning =
+    roundPhase === "SPINNING";
+
+  const waitingForBlock =
+    roundPhase === "WAITING";
 
   /*
-    LOAD CURRENT ZCASH STATUS
+    LOAD CURRENT ZCASH TESTNET STATUS
   */
   useEffect(() => {
     async function loadZcashStatus() {
@@ -211,8 +207,7 @@ export default function Home() {
           await fetch(
             "/api/zcash-status",
             {
-              cache:
-                "no-store",
+              cache: "no-store",
             }
           );
 
@@ -244,15 +239,11 @@ export default function Home() {
   }, []);
 
   /*
-    BETTING COUNTDOWN
-
-    15 → 14 → 13 → ... → 0
+    30 SECOND BETTING COUNTDOWN
   */
   useEffect(() => {
     if (
-      waitingForBlock ||
-      spinning ||
-      lockingRound
+      roundPhase !== "BETTING"
     ) {
       return;
     }
@@ -280,32 +271,28 @@ export default function Home() {
       );
     };
   }, [
+    roundPhase,
     bettingTimeLeft,
-    waitingForBlock,
-    spinning,
-    lockingRound,
   ]);
 
   /*
-    IF THE PLAYER MISSES
-    THE 15-SECOND DEADLINE,
-    OPEN A FRESH ROUND
-    AFTER 3 SECONDS.
+    IF BETTING REACHES 00:00
+    WITHOUT A SUBMITTED ROUND
   */
   useEffect(() => {
+    if (
+      roundPhase !== "BETTING"
+    ) {
+      return;
+    }
+
     if (
       bettingTimeLeft !== 0
     ) {
       return;
     }
 
-    if (
-      waitingForBlock ||
-      spinning ||
-      lockingRound
-    ) {
-      return;
-    }
+    setRoundPhase("MISSED");
 
     const resetTimer =
       window.setTimeout(() => {
@@ -317,7 +304,25 @@ export default function Home() {
 
         setResult(null);
         setOutcome(null);
-      }, 3000);
+
+        setTargetBlockHeight(
+          null
+        );
+
+        setRoundBlockHash(
+          null
+        );
+
+        setRoundVerifiedPocket(
+          null
+        );
+
+        setWaitingSeconds(0);
+
+        setRoundPhase(
+          "BETTING"
+        );
+      }, 2000);
 
     return () => {
       window.clearTimeout(
@@ -325,25 +330,17 @@ export default function Home() {
       );
     };
   }, [
+    roundPhase,
     bettingTimeLeft,
-    waitingForBlock,
-    spinning,
-    lockingRound,
   ]);
 
   /*
-    WAITING TIMER
-
-    Starts at 00:00 when
-    the future block is locked.
-
-    00:01
-    00:02
-    00:03
-    ...
+    BLOCK WAIT TIMER
   */
   useEffect(() => {
-    if (!waitingForBlock) {
+    if (
+      roundPhase !== "WAITING"
+    ) {
       return;
     }
 
@@ -360,15 +357,14 @@ export default function Home() {
         timer
       );
     };
-  }, [waitingForBlock]);
+  }, [roundPhase]);
 
   /*
-    WATCH THE LOCKED
-    FUTURE ZCASH BLOCK
+    WATCH LOCKED FUTURE BLOCK
   */
   useEffect(() => {
     if (
-      !waitingForBlock ||
+      roundPhase !== "WAITING" ||
       targetBlockHeight === null
     ) {
       return;
@@ -386,8 +382,7 @@ export default function Home() {
           await fetch(
             `/api/zcash-block/${targetBlockHeight}`,
             {
-              cache:
-                "no-store",
+              cache: "no-store",
             }
           );
 
@@ -405,18 +400,20 @@ export default function Home() {
           true;
 
         /*
-          BLOCK HASH
-              ↓
-          VERIFIER
-              ↓
-          POCKET
+          ZCASH BLOCK HASH
+                ↓
+          SHA-256 VERIFIER
+                ↓
+          ROULETTE POCKET
         */
         const pocket =
-  await verifyBlockHash(
-    data.hash
-  );
+          await verifyBlockHash(
+            data.hash
+          );
 
-        if (pocket === null) {
+        if (
+          pocket === null
+        ) {
           resolvingBlockRef.current =
             false;
 
@@ -431,13 +428,9 @@ export default function Home() {
           pocket
         );
 
-        setWaitingForBlock(
-          false
-        );
-
         /*
-          FIND THE POCKET'S
-          POSITION ON THE WHEEL
+          FIND THE VERIFIED POCKET
+          ON THE PHYSICAL WHEEL
         */
         const resultIndex =
           wheelNumbers.findIndex(
@@ -455,9 +448,11 @@ export default function Home() {
         }
 
         /*
-          START VISUAL SPIN
+          START WHEEL ANIMATION
         */
-        setSpinning(true);
+        setRoundPhase(
+          "SPINNING"
+        );
 
         setResult(null);
         setOutcome(null);
@@ -490,13 +485,11 @@ export default function Home() {
         );
 
         /*
+          WAIT 3 SECONDS FOR
           WHEEL ANIMATION
-          TAKES 3 SECONDS
         */
         window.setTimeout(
           () => {
-            setSpinning(false);
-
             setResult(
               pocket
             );
@@ -594,15 +587,19 @@ export default function Home() {
               );
             }
 
+            setRoundPhase(
+              "RESULT"
+            );
+
             resolvingBlockRef.current =
               false;
 
             /*
-              RESULT STAYS VISIBLE
-              FOR 2 SECONDS.
+              KEEP RESULT VISIBLE
+              FOR 3 SECONDS
 
-              THEN OPEN NEW
-              15 SECOND ROUND.
+              THEN START
+              A NEW ROUND
             */
             window.setTimeout(
               () => {
@@ -626,6 +623,18 @@ export default function Home() {
                   null
                 );
 
+                setTargetBlockHeight(
+                  null
+                );
+
+                setRoundBlockHash(
+                  null
+                );
+
+                setRoundVerifiedPocket(
+                  null
+                );
+
                 setResult(
                   null
                 );
@@ -633,18 +642,20 @@ export default function Home() {
                 setOutcome(
                   null
                 );
+
+                setRoundPhase(
+                  "BETTING"
+                );
               },
-              2000
+              3000
             );
           },
           3000
         );
       } catch {
         /*
-          Keep waiting.
-
-          The next poll will
-          try again.
+          KEEP WAITING.
+          NEXT POLL RETRIES.
         */
       }
     }
@@ -663,28 +674,20 @@ export default function Home() {
       );
     };
   }, [
-    waitingForBlock,
+    roundPhase,
     targetBlockHeight,
     roundBet,
     roundWager,
   ]);
 
   /*
-    MAIN SPIN BUTTON
+    MAIN SPIN / SUBMIT BUTTON
   */
   async function handleSpin() {
     const wager =
       Number(betAmount);
 
-    if (spinning) return;
-
-    if (waitingForBlock)
-      return;
-
-    if (lockingRound)
-      return;
-
-    if (bettingClosed)
+    if (!bettingOpen)
       return;
 
     if (
@@ -701,24 +704,29 @@ export default function Home() {
       return;
     }
 
-    if (wager < 1) return;
-
-    if (wager > balance)
+    if (wager < 1)
       return;
 
-    setLockingRound(true);
+    if (
+      wager > balance
+    ) {
+      return;
+    }
+
+    setRoundPhase(
+      "LOCKING"
+    );
 
     try {
       /*
-        GET THE REAL CURRENT
-        BLOCK WHEN SPIN IS CLICKED
+        GET LATEST REAL
+        ZCASH TESTNET BLOCK
       */
       const response =
         await fetch(
           "/api/zcash-status",
           {
-            cache:
-              "no-store",
+            cache: "no-store",
           }
         );
 
@@ -734,8 +742,8 @@ export default function Home() {
           false
         );
 
-        setLockingRound(
-          false
+        setRoundPhase(
+          "BETTING"
         );
 
         return;
@@ -761,8 +769,7 @@ export default function Home() {
       );
 
       /*
-        FREEZE THIS ROUND'S
-        TEST PREDICTION
+        FREEZE THIS ROUND
       */
       setRoundBet(
         selectedBet
@@ -781,18 +788,18 @@ export default function Home() {
       );
 
       /*
-        BETTING IS NOW CLOSED
+        CLOSE BETTING
       */
-      setBettingTimeLeft(0);
+      setBettingTimeLeft(
+        0
+      );
+
+      setWaitingSeconds(
+        0
+      );
 
       /*
-        WAIT TIMER STARTS
-        FROM ZERO
-      */
-      setWaitingSeconds(0);
-
-      /*
-        LOCK FUTURE BLOCK
+        LOCK THE FUTURE BLOCK
       */
       setTargetBlockHeight(
         nextBlock
@@ -812,20 +819,16 @@ export default function Home() {
       resolvingBlockRef.current =
         false;
 
-      setWaitingForBlock(
-        true
-      );
-
-      setLockingRound(
-        false
+      setRoundPhase(
+        "WAITING"
       );
     } catch {
       setTestnetConnected(
         false
       );
 
-      setLockingRound(
-        false
+      setRoundPhase(
+        "BETTING"
       );
     }
   }
@@ -834,6 +837,7 @@ export default function Home() {
     <main className="game">
 
       <header className="topbar">
+
         <div>
           <h1 className="brand">
             ZKSPIN
@@ -857,6 +861,7 @@ export default function Home() {
           </div>
 
           <div className="network-status">
+
             <span>
               ZCASH TESTNET •{" "}
               {testnetConnected
@@ -869,9 +874,11 @@ export default function Home() {
               {blockHeight ??
                 "—"}
             </strong>
+
           </div>
 
         </div>
+
       </header>
 
       <section className="roulette-section">
@@ -881,8 +888,10 @@ export default function Home() {
           spinning={spinning}
         />
 
-        {waitingForBlock ? (
+        {roundPhase ===
+        "WAITING" ? (
           <div>
+
             <p className="wheel-label">
               WAITING FOR ZCASH
               BLOCK{" "}
@@ -896,16 +905,17 @@ export default function Home() {
                 waitingSeconds
               )}
             </p>
+
           </div>
-        ) : result === null ? (
+        ) : roundPhase ===
+          "SPINNING" ? (
           <p className="wheel-label">
-            {spinning
-              ? "Spinning..."
-              : bettingClosed
-              ? "Betting closed"
-              : "Waiting for prediction"}
+            VERIFIED BLOCK FOUND —
+            SPINNING...
           </p>
-        ) : (
+        ) : roundPhase ===
+          "RESULT" &&
+          result !== null ? (
           <div className="spin-result">
 
             <span>
@@ -930,6 +940,16 @@ export default function Home() {
             )}
 
           </div>
+        ) : roundPhase ===
+          "MISSED" ? (
+          <p className="wheel-label">
+            ROUND MISSED —
+            NEW ROUND STARTING
+          </p>
+        ) : (
+          <p className="wheel-label">
+            WAITING FOR PREDICTION
+          </p>
         )}
 
       </section>
@@ -943,9 +963,13 @@ export default function Home() {
           </span>
 
           <strong>
-            {waitingForBlock
+            {roundPhase ===
+            "WAITING"
               ? "WAITING"
-              : roundBlockHash
+              : roundPhase ===
+                "SPINNING" ||
+                roundPhase ===
+                  "RESULT"
               ? "VERIFIED"
               : "READY"}
           </strong>
@@ -1000,7 +1024,8 @@ export default function Home() {
                   0,
                   16
                 )}...`
-              : waitingForBlock
+              : roundPhase ===
+                "WAITING"
               ? "WAITING..."
               : "—"}
           </code>
@@ -1023,7 +1048,10 @@ export default function Home() {
           </span>
 
           <strong>
-            {waitingForBlock
+            {roundPhase ===
+              "WAITING" ||
+            roundPhase ===
+              "SPINNING"
               ? formatTime(
                   waitingSeconds
                 )
@@ -1038,15 +1066,36 @@ export default function Home() {
         <div className="betting-timer">
 
           <span>
-            {bettingClosed
+            {roundPhase ===
+            "BETTING"
+              ? "BETTING CLOSES IN"
+              : roundPhase ===
+                "LOCKING"
+              ? "LOCKING ROUND"
+              : roundPhase ===
+                "WAITING"
               ? "BETTING CLOSED"
-              : "BETTING CLOSES IN"}
+              : roundPhase ===
+                "SPINNING"
+              ? "BLOCK VERIFIED"
+              : roundPhase ===
+                "RESULT"
+              ? "ROUND COMPLETE"
+              : "ROUND MISSED"}
           </span>
 
           <strong>
-            {formatTime(
-              bettingTimeLeft
-            )}
+            {roundPhase ===
+            "BETTING"
+              ? formatTime(
+                  bettingTimeLeft
+                )
+              : roundPhase ===
+                "WAITING"
+              ? formatTime(
+                  waitingSeconds
+                )
+              : "--:--"}
           </strong>
 
         </div>
@@ -1075,10 +1124,7 @@ export default function Home() {
                 )
               }
               disabled={
-                spinning ||
-                waitingForBlock ||
-                lockingRound ||
-                bettingClosed
+                !bettingOpen
               }
             >
               -
@@ -1098,10 +1144,7 @@ export default function Home() {
                 )
               }
               disabled={
-                spinning ||
-                waitingForBlock ||
-                lockingRound ||
-                bettingClosed
+                !bettingOpen
               }
             />
 
@@ -1122,16 +1165,14 @@ export default function Home() {
                 )
               }
               disabled={
-                spinning ||
-                waitingForBlock ||
-                lockingRound ||
-                bettingClosed
+                !bettingOpen
               }
             >
               +
             </button>
 
           </div>
+
         </div>
 
         <div className="prediction">
@@ -1157,10 +1198,7 @@ export default function Home() {
                 )
               }
               disabled={
-                spinning ||
-                waitingForBlock ||
-                lockingRound ||
-                bettingClosed
+                !bettingOpen
               }
             >
               RED
@@ -1179,10 +1217,7 @@ export default function Home() {
                 )
               }
               disabled={
-                spinning ||
-                waitingForBlock ||
-                lockingRound ||
-                bettingClosed
+                !bettingOpen
               }
             >
               BLACK
@@ -1201,10 +1236,7 @@ export default function Home() {
                 )
               }
               disabled={
-                spinning ||
-                waitingForBlock ||
-                lockingRound ||
-                bettingClosed
+                !bettingOpen
               }
             >
               ODD
@@ -1223,41 +1255,43 @@ export default function Home() {
                 )
               }
               disabled={
-                spinning ||
-                waitingForBlock ||
-                lockingRound ||
-                bettingClosed
+                !bettingOpen
               }
             >
               EVEN
             </button>
 
           </div>
+
         </div>
 
         <button
           className="spin-button"
           onClick={handleSpin}
           disabled={
-            spinning ||
-            waitingForBlock ||
-            lockingRound ||
-            bettingClosed ||
+            !bettingOpen ||
             selectedBet ===
               null ||
             invalidBet ||
             !testnetConnected
           }
         >
-          {lockingRound
+          {roundPhase ===
+          "BETTING"
+            ? "SPIN"
+            : roundPhase ===
+              "LOCKING"
             ? "LOCKING ROUND..."
-            : waitingForBlock
+            : roundPhase ===
+              "WAITING"
             ? `WAITING FOR BLOCK ${targetBlockHeight}`
-            : spinning
+            : roundPhase ===
+              "SPINNING"
             ? "SPINNING..."
-            : bettingClosed
-            ? "BETTING CLOSED"
-            : "SPIN"}
+            : roundPhase ===
+              "RESULT"
+            ? "ROUND COMPLETE"
+            : "ROUND MISSED"}
         </button>
 
       </section>
