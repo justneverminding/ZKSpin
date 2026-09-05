@@ -29,6 +29,8 @@ export default function Home() {
  const [betAmount, setBetAmount] = useState("1");
 
 const [balance, setBalance] = useState(100);
+  const [blockHeight, setBlockHeight] =
+  useState<number | null>(null);
 
 const wagerAmount = Number(betAmount);
 
@@ -137,7 +139,9 @@ setHistory((current) => [
 
   <div className="network-status">
     <span>ZCASH TESTNET</span>
-    <strong>BLOCK: —</strong>
+    <strong>
+  BLOCK: {blockHeight ?? "—"}
+</strong>
   </div>
 </div>
         
