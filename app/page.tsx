@@ -133,6 +133,12 @@ setHistory((current) => [
           <span>Balance</span>
           <strong>{balance} TEST ZEC</strong>
         </div>
+        
+        <div className="network-status">
+  <span>ZCASH TESTNET</span>
+  <strong>BLOCK: —</strong>
+</div>
+        
       </header>
 
       <section className="roulette-section">
