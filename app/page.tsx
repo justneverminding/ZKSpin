@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import RouletteWheel from "../components/RouletteWheel";
 import { verifyBlockHash } from "../lib/rouletteVerifier";
 
@@ -20,7 +26,37 @@ type RoundPhase =
   | "RESULT"
   | "MISSED";
 
+type HistoryEntry = {
+  result: RouletteResult;
+  bet: BetType;
+  amount: number;
+  outcome: "WIN" | "LOSS";
+};
+
+type StoredState = {
+  version: 1;
+  roundPhase: RoundPhase;
+  betAmount: string;
+  balance: number;
+  targetBlockHeight: number | null;
+  roundBlockHash: string | null;
+  roundVerifiedPocket: RouletteResult | null;
+  roundBet: BetType | null;
+  roundWager: number | null;
+  selectedBet: BetType | null;
+  result: RouletteResult | null;
+  outcome: "WIN" | "LOSS" | null;
+  history: HistoryEntry[];
+  bettingEndsAt: number | null;
+  waitingStartedAt: number | null;
+  resultEndsAt: number | null;
+  roundSettled: boolean;
+};
+
 const BETTING_SECONDS = 30;
+
+const STORAGE_KEY =
+  "zkspin-demo-state-v1";
 
 const wheelNumbers: RouletteResult[] = [
   0, 28, 9, 26, 30, 11, 7, 20, 32, 17,
@@ -54,6 +90,36 @@ function getResultColor(
   return "BLACK";
 }
 
+function didBetWin(
+  bet: BetType,
+  pocket: RouletteResult
+) {
+  const color =
+    getResultColor(pocket);
+
+  if (bet === "RED") {
+    return color === "RED";
+  }
+
+  if (bet === "BLACK") {
+    return color === "BLACK";
+  }
+
+  if (bet === "ODD") {
+    return (
+      typeof pocket === "number" &&
+      pocket !== 0 &&
+      pocket % 2 !== 0
+    );
+  }
+
+  return (
+    typeof pocket === "number" &&
+    pocket !== 0 &&
+    pocket % 2 === 0
+  );
+}
+
 function formatTime(seconds: number) {
   const minutes =
     Math.floor(seconds / 60);
@@ -70,6 +136,9 @@ function formatTime(seconds: number) {
 }
 
 export default function Home() {
+  const [hydrated, setHydrated] =
+    useState(false);
+
   const [rotation, setRotation] =
     useState(0);
 
@@ -163,15 +232,32 @@ export default function Home() {
   ] =
     useState(0);
 
+  const [
+    bettingEndsAt,
+    setBettingEndsAt,
+  ] =
+    useState<number | null>(null);
+
+  const [
+    waitingStartedAt,
+    setWaitingStartedAt,
+  ] =
+    useState<number | null>(null);
+
+  const [
+    resultEndsAt,
+    setResultEndsAt,
+  ] =
+    useState<number | null>(null);
+
+  const [
+    roundSettled,
+    setRoundSettled,
+  ] =
+    useState(false);
+
   const [history, setHistory] =
-    useState<
-      {
-        result: RouletteResult;
-        bet: BetType;
-        amount: number;
-        outcome: "WIN" | "LOSS";
-      }[]
-    >([]);
+    useState<HistoryEntry[]>([]);
 
   const resolvingBlockRef =
     useRef(false);
@@ -188,17 +274,374 @@ export default function Home() {
     wagerAmount > balance;
 
   const bettingOpen =
+    hydrated &&
     roundPhase === "BETTING" &&
     bettingTimeLeft > 0;
 
   const spinning =
     roundPhase === "SPINNING";
 
-  const waitingForBlock =
-    roundPhase === "WAITING";
+  /*
+    START A FRESH 30-SECOND ROUND
+  */
+  const startNewRound =
+    useCallback(() => {
+      const deadline =
+        Date.now() +
+        BETTING_SECONDS * 1000;
+
+      setRoundPhase("BETTING");
+
+      setBettingEndsAt(
+        deadline
+      );
+
+      setBettingTimeLeft(
+        BETTING_SECONDS
+      );
+
+      setWaitingStartedAt(
+        null
+      );
+
+      setWaitingSeconds(0);
+
+      setResultEndsAt(null);
+
+      setSelectedBet(null);
+
+      setRoundBet(null);
+      setRoundWager(null);
+
+      setTargetBlockHeight(
+        null
+      );
+
+      setRoundBlockHash(
+        null
+      );
+
+      setRoundVerifiedPocket(
+        null
+      );
+
+      setResult(null);
+      setOutcome(null);
+
+      setRoundSettled(false);
+
+      resolvingBlockRef.current =
+        false;
+    }, []);
 
   /*
-    LOAD CURRENT ZCASH TESTNET STATUS
+    RESTORE THIS BROWSER'S
+    SAVED DEMO STATE
+  */
+  useEffect(() => {
+    const raw =
+      window.localStorage.getItem(
+        STORAGE_KEY
+      );
+
+    if (!raw) {
+      startNewRound();
+      setHydrated(true);
+      return;
+    }
+
+    try {
+      const saved =
+        JSON.parse(
+          raw
+        ) as Partial<StoredState>;
+
+      const now =
+        Date.now();
+
+      if (
+        typeof saved.betAmount ===
+        "string"
+      ) {
+        setBetAmount(
+          saved.betAmount
+        );
+      }
+
+      if (
+        typeof saved.balance ===
+        "number"
+      ) {
+        setBalance(
+          saved.balance
+        );
+      }
+
+      if (
+        Array.isArray(
+          saved.history
+        )
+      ) {
+        setHistory(
+          saved.history
+        );
+      }
+
+      setSelectedBet(
+        saved.selectedBet ??
+          null
+      );
+
+      setRoundBet(
+        saved.roundBet ?? null
+      );
+
+      setRoundWager(
+        saved.roundWager ??
+          null
+      );
+
+      setTargetBlockHeight(
+        saved.targetBlockHeight ??
+          null
+      );
+
+      setRoundBlockHash(
+        saved.roundBlockHash ??
+          null
+      );
+
+      setRoundVerifiedPocket(
+        saved.roundVerifiedPocket ??
+          null
+      );
+
+      setResult(
+        saved.result ?? null
+      );
+
+      setOutcome(
+        saved.outcome ?? null
+      );
+
+      setRoundSettled(
+        saved.roundSettled ??
+          false
+      );
+
+      /*
+        RESTORE A ROUND THAT WAS
+        WAITING FOR A BLOCK.
+
+        IF THE PAGE WAS REFRESHED
+        DURING SPINNING, WE GO BACK
+        TO THE SAME LOCKED BLOCK AND
+        VERIFY IT AGAIN.
+      */
+      if (
+        (
+          saved.roundPhase ===
+            "WAITING" ||
+          saved.roundPhase ===
+            "SPINNING"
+        ) &&
+        typeof saved
+          .targetBlockHeight ===
+          "number" &&
+        saved.roundBet &&
+        typeof saved.roundWager ===
+          "number"
+      ) {
+        const startedAt =
+          saved.waitingStartedAt ??
+          now;
+
+        setRoundPhase(
+          "WAITING"
+        );
+
+        setWaitingStartedAt(
+          startedAt
+        );
+
+        setWaitingSeconds(
+          Math.max(
+            0,
+            Math.floor(
+              (
+                now -
+                startedAt
+              ) / 1000
+            )
+          )
+        );
+
+        setBettingEndsAt(
+          null
+        );
+
+        setHydrated(true);
+        return;
+      }
+
+      /*
+        RESTORE A RESULT THAT
+        IS STILL INSIDE ITS
+        3-SECOND DISPLAY WINDOW
+      */
+      if (
+        saved.roundPhase ===
+          "RESULT" &&
+        saved.roundSettled &&
+        typeof saved
+          .resultEndsAt ===
+          "number" &&
+        saved.resultEndsAt >
+          now
+      ) {
+        setRoundPhase(
+          "RESULT"
+        );
+
+        setResultEndsAt(
+          saved.resultEndsAt
+        );
+
+        setBettingEndsAt(
+          null
+        );
+
+        setHydrated(true);
+        return;
+      }
+
+      /*
+        RESTORE THE ACTIVE
+        BETTING DEADLINE
+      */
+      if (
+        saved.roundPhase ===
+          "BETTING" &&
+        typeof saved
+          .bettingEndsAt ===
+          "number" &&
+        saved.bettingEndsAt >
+          now
+      ) {
+        const secondsLeft =
+          Math.max(
+            0,
+            Math.ceil(
+              (
+                saved
+                  .bettingEndsAt -
+                now
+              ) / 1000
+            )
+          );
+
+        setRoundPhase(
+          "BETTING"
+        );
+
+        setBettingEndsAt(
+          saved.bettingEndsAt
+        );
+
+        setBettingTimeLeft(
+          secondsLeft
+        );
+
+        setHydrated(true);
+        return;
+      }
+
+      /*
+        OLD ROUND ALREADY ENDED.
+      */
+      startNewRound();
+      setHydrated(true);
+    } catch {
+      window.localStorage.removeItem(
+        STORAGE_KEY
+      );
+
+      startNewRound();
+      setHydrated(true);
+    }
+  }, [startNewRound]);
+
+  /*
+    SAVE THIS BROWSER'S
+    CURRENT DEMO STATE
+  */
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    const state: StoredState =
+      {
+        version: 1,
+
+        roundPhase,
+
+        betAmount,
+        balance,
+
+        targetBlockHeight,
+
+        roundBlockHash,
+
+        roundVerifiedPocket,
+
+        roundBet,
+        roundWager,
+
+        selectedBet,
+
+        result,
+        outcome,
+
+        history,
+
+        bettingEndsAt,
+
+        waitingStartedAt,
+
+        resultEndsAt,
+
+        roundSettled,
+      };
+
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(
+        state
+      )
+    );
+  }, [
+    hydrated,
+    roundPhase,
+    betAmount,
+    balance,
+    targetBlockHeight,
+    roundBlockHash,
+    roundVerifiedPocket,
+    roundBet,
+    roundWager,
+    selectedBet,
+    result,
+    outcome,
+    history,
+    bettingEndsAt,
+    waitingStartedAt,
+    resultEndsAt,
+    roundSettled,
+  ]);
+
+  /*
+    LOAD CURRENT ZCASH STATUS
   */
   useEffect(() => {
     async function loadZcashStatus() {
@@ -207,7 +650,8 @@ export default function Home() {
           await fetch(
             "/api/zcash-status",
             {
-              cache: "no-store",
+              cache:
+                "no-store",
             }
           );
 
@@ -239,90 +683,82 @@ export default function Home() {
   }, []);
 
   /*
-    30 SECOND BETTING COUNTDOWN
+    TIMESTAMP-BASED
+    BETTING COUNTDOWN
   */
   useEffect(() => {
     if (
-      roundPhase !== "BETTING"
+      !hydrated ||
+      roundPhase !==
+        "BETTING" ||
+      bettingEndsAt ===
+        null
     ) {
       return;
     }
 
-    if (
-      bettingTimeLeft <= 0
-    ) {
-      return;
+    function updateTimer() {
+      const remaining =
+        Math.max(
+          0,
+          Math.ceil(
+            (
+              bettingEndsAt -
+              Date.now()
+            ) / 1000
+          )
+        );
+
+      setBettingTimeLeft(
+        remaining
+      );
     }
+
+    updateTimer();
 
     const timer =
-      window.setTimeout(() => {
-        setBettingTimeLeft(
-          (current) =>
-            Math.max(
-              0,
-              current - 1
-            )
-        );
-      }, 1000);
+      window.setInterval(
+        updateTimer,
+        250
+      );
 
     return () => {
-      window.clearTimeout(
+      window.clearInterval(
         timer
       );
     };
   }, [
+    hydrated,
     roundPhase,
-    bettingTimeLeft,
+    bettingEndsAt,
   ]);
 
   /*
-    IF BETTING REACHES 00:00
-    WITHOUT A SUBMITTED ROUND
+    BETTING DEADLINE EXPIRED
   */
   useEffect(() => {
     if (
-      roundPhase !== "BETTING"
-    ) {
-      return;
-    }
-
-    if (
+      !hydrated ||
+      roundPhase !==
+        "BETTING" ||
       bettingTimeLeft !== 0
     ) {
       return;
     }
 
-    setRoundPhase("MISSED");
+    setRoundPhase(
+      "MISSED"
+    );
+
+    setBettingEndsAt(
+      null
+    );
 
     const resetTimer =
-      window.setTimeout(() => {
-        setBettingTimeLeft(
-          BETTING_SECONDS
-        );
-
-        setSelectedBet(null);
-
-        setResult(null);
-        setOutcome(null);
-
-        setTargetBlockHeight(
-          null
-        );
-
-        setRoundBlockHash(
-          null
-        );
-
-        setRoundVerifiedPocket(
-          null
-        );
-
-        setWaitingSeconds(0);
-
-        setRoundPhase(
-          "BETTING"
-        );
-      }, 2000);
+      window.setTimeout(
+        startNewRound,
+        2000
+      );
 
     return () => {
       window.clearTimeout(
@@ -330,42 +766,106 @@ export default function Home() {
       );
     };
   }, [
+    hydrated,
     roundPhase,
     bettingTimeLeft,
+    startNewRound,
   ]);
 
   /*
+    TIMESTAMP-BASED
     BLOCK WAIT TIMER
   */
   useEffect(() => {
     if (
-      roundPhase !== "WAITING"
+      roundPhase !==
+        "WAITING" ||
+      waitingStartedAt ===
+        null
     ) {
       return;
     }
 
+    function updateWait() {
+      setWaitingSeconds(
+        Math.max(
+          0,
+          Math.floor(
+            (
+              Date.now() -
+              waitingStartedAt
+            ) / 1000
+          )
+        )
+      );
+    }
+
+    updateWait();
+
     const timer =
-      window.setInterval(() => {
-        setWaitingSeconds(
-          (current) =>
-            current + 1
-        );
-      }, 1000);
+      window.setInterval(
+        updateWait,
+        1000
+      );
 
     return () => {
       window.clearInterval(
         timer
       );
     };
-  }, [roundPhase]);
+  }, [
+    roundPhase,
+    waitingStartedAt,
+  ]);
+
+  /*
+    RESTORE / END RESULT SCREEN
+  */
+  useEffect(() => {
+    if (
+      roundPhase !==
+        "RESULT" ||
+      resultEndsAt ===
+        null
+    ) {
+      return;
+    }
+
+    const remaining =
+      resultEndsAt -
+      Date.now();
+
+    if (remaining <= 0) {
+      startNewRound();
+      return;
+    }
+
+    const timer =
+      window.setTimeout(
+        startNewRound,
+        remaining
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    roundPhase,
+    resultEndsAt,
+    startNewRound,
+  ]);
 
   /*
     WATCH LOCKED FUTURE BLOCK
   */
   useEffect(() => {
     if (
-      roundPhase !== "WAITING" ||
-      targetBlockHeight === null
+      roundPhase !==
+        "WAITING" ||
+      targetBlockHeight ===
+        null
     ) {
       return;
     }
@@ -382,7 +882,8 @@ export default function Home() {
           await fetch(
             `/api/zcash-block/${targetBlockHeight}`,
             {
-              cache: "no-store",
+              cache:
+                "no-store",
             }
           );
 
@@ -399,13 +900,6 @@ export default function Home() {
         resolvingBlockRef.current =
           true;
 
-        /*
-          ZCASH BLOCK HASH
-                ↓
-          SHA-256 VERIFIER
-                ↓
-          ROULETTE POCKET
-        */
         const pocket =
           await verifyBlockHash(
             data.hash
@@ -428,10 +922,6 @@ export default function Home() {
           pocket
         );
 
-        /*
-          FIND THE VERIFIED POCKET
-          ON THE PHYSICAL WHEEL
-        */
         const resultIndex =
           wheelNumbers.findIndex(
             (number) =>
@@ -447,9 +937,6 @@ export default function Home() {
           return;
         }
 
-        /*
-          START WHEEL ANIMATION
-        */
         setRoundPhase(
           "SPINNING"
         );
@@ -484,68 +971,44 @@ export default function Home() {
           }
         );
 
-        /*
-          WAIT 3 SECONDS FOR
-          WHEEL ANIMATION
-        */
         window.setTimeout(
           () => {
+            if (
+              roundBet ===
+                null ||
+              roundWager ===
+                null
+            ) {
+              resolvingBlockRef.current =
+                false;
+
+              return;
+            }
+
+            const won =
+              didBetWin(
+                roundBet,
+                pocket
+              );
+
             setResult(
               pocket
             );
 
-            const resultColor =
-              getResultColor(
-                pocket
-              );
+            setOutcome(
+              won
+                ? "WIN"
+                : "LOSS"
+            );
 
-            let won = false;
-
+            /*
+              SETTLE THIS DEMO ROUND
+              ONLY ONCE
+            */
             if (
-              roundBet ===
-              "RED"
+              !roundSettled
             ) {
-              won =
-                resultColor ===
-                "RED";
-            } else if (
-              roundBet ===
-              "BLACK"
-            ) {
-              won =
-                resultColor ===
-                "BLACK";
-            } else if (
-              roundBet ===
-              "ODD"
-            ) {
-              won =
-                typeof pocket ===
-                  "number" &&
-                pocket !== 0 &&
-                pocket % 2 !==
-                  0;
-            } else if (
-              roundBet ===
-              "EVEN"
-            ) {
-              won =
-                typeof pocket ===
-                  "number" &&
-                pocket !== 0 &&
-                pocket % 2 ===
-                  0;
-            }
-
-            if (won) {
-              setOutcome(
-                "WIN"
-              );
-
-              if (
-                roundWager !==
-                null
-              ) {
+              if (won) {
                 setBalance(
                   (current) =>
                     current +
@@ -553,18 +1016,7 @@ export default function Home() {
                       2
                 );
               }
-            } else {
-              setOutcome(
-                "LOSS"
-              );
-            }
 
-            if (
-              roundBet !==
-                null &&
-              roundWager !==
-                null
-            ) {
               setHistory(
                 (current) => [
                   {
@@ -577,15 +1029,28 @@ export default function Home() {
                     amount:
                       roundWager,
 
-                    outcome: won
-                      ? "WIN"
-                      : "LOSS",
+                    outcome:
+                      won
+                        ? "WIN"
+                        : "LOSS",
                   },
 
                   ...current,
                 ]
               );
+
+              setRoundSettled(
+                true
+              );
             }
+
+            const endsAt =
+              Date.now() +
+              3000;
+
+            setResultEndsAt(
+              endsAt
+            );
 
             setRoundPhase(
               "RESULT"
@@ -593,69 +1058,13 @@ export default function Home() {
 
             resolvingBlockRef.current =
               false;
-
-            /*
-              KEEP RESULT VISIBLE
-              FOR 3 SECONDS
-
-              THEN START
-              A NEW ROUND
-            */
-            window.setTimeout(
-              () => {
-                setBettingTimeLeft(
-                  BETTING_SECONDS
-                );
-
-                setWaitingSeconds(
-                  0
-                );
-
-                setSelectedBet(
-                  null
-                );
-
-                setRoundBet(
-                  null
-                );
-
-                setRoundWager(
-                  null
-                );
-
-                setTargetBlockHeight(
-                  null
-                );
-
-                setRoundBlockHash(
-                  null
-                );
-
-                setRoundVerifiedPocket(
-                  null
-                );
-
-                setResult(
-                  null
-                );
-
-                setOutcome(
-                  null
-                );
-
-                setRoundPhase(
-                  "BETTING"
-                );
-              },
-              3000
-            );
           },
           3000
         );
       } catch {
         /*
-          KEEP WAITING.
-          NEXT POLL RETRIES.
+          Keep waiting.
+          Next poll retries.
         */
       }
     }
@@ -678,17 +1087,19 @@ export default function Home() {
     targetBlockHeight,
     roundBet,
     roundWager,
+    roundSettled,
   ]);
 
   /*
-    MAIN SPIN / SUBMIT BUTTON
+    SUBMIT DEMO ROUND
   */
   async function handleSpin() {
     const wager =
       Number(betAmount);
 
-    if (!bettingOpen)
+    if (!bettingOpen) {
       return;
+    }
 
     if (
       selectedBet === null
@@ -699,15 +1110,8 @@ export default function Home() {
     if (
       !Number.isFinite(
         wager
-      )
-    ) {
-      return;
-    }
-
-    if (wager < 1)
-      return;
-
-    if (
+      ) ||
+      wager < 1 ||
       wager > balance
     ) {
       return;
@@ -718,15 +1122,12 @@ export default function Home() {
     );
 
     try {
-      /*
-        GET LATEST REAL
-        ZCASH TESTNET BLOCK
-      */
       const response =
         await fetch(
           "/api/zcash-status",
           {
-            cache: "no-store",
+            cache:
+              "no-store",
           }
         );
 
@@ -768,9 +1169,6 @@ export default function Home() {
         true
       );
 
-      /*
-        FREEZE THIS ROUND
-      */
       setRoundBet(
         selectedBet
       );
@@ -779,28 +1177,30 @@ export default function Home() {
         wager
       );
 
-      /*
-        UPDATE TEST BALANCE
-      */
       setBalance(
         (current) =>
           current - wager
       );
 
-      /*
-        CLOSE BETTING
-      */
+      setBettingEndsAt(
+        null
+      );
+
       setBettingTimeLeft(
         0
+      );
+
+      const waitStart =
+        Date.now();
+
+      setWaitingStartedAt(
+        waitStart
       );
 
       setWaitingSeconds(
         0
       );
 
-      /*
-        LOCK THE FUTURE BLOCK
-      */
       setTargetBlockHeight(
         nextBlock
       );
@@ -815,6 +1215,10 @@ export default function Home() {
 
       setResult(null);
       setOutcome(null);
+
+      setRoundSettled(false);
+
+      setResultEndsAt(null);
 
       resolvingBlockRef.current =
         false;
@@ -932,8 +1336,7 @@ export default function Home() {
               )}
             </em>
 
-            {outcome !==
-              null && (
+            {outcome !== null && (
               <p className="round-outcome">
                 {outcome}
               </p>
@@ -967,7 +1370,7 @@ export default function Home() {
             "WAITING"
               ? "WAITING"
               : roundPhase ===
-                "SPINNING" ||
+                  "SPINNING" ||
                 roundPhase ===
                   "RESULT"
               ? "VERIFIED"
