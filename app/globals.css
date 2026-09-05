@@ -602,3 +602,9 @@ button {
   color: #050505;
   border-color: #888;
 }
+.round-outcome {
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
