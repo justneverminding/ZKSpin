@@ -22,6 +22,8 @@ type RoundPhase =
   | "BETTING"
   | "LOCKING"
   | "WAITING"
+  | "CONFIRMING"
+  | "REORG_DETECTED"
   | "SPINNING"
   | "RESULT"
   | "MISSED";
@@ -34,29 +36,69 @@ type HistoryEntry = {
 };
 
 type StoredState = {
-  version: 1;
+  version: 2;
+
   roundPhase: RoundPhase;
+
   betAmount: string;
   balance: number;
+
   targetBlockHeight: number | null;
+
   roundBlockHash: string | null;
   roundVerifiedPocket: RouletteResult | null;
+
   roundBet: BetType | null;
   roundWager: number | null;
+
   selectedBet: BetType | null;
+
   result: RouletteResult | null;
   outcome: "WIN" | "LOSS" | null;
+
   history: HistoryEntry[];
+
   bettingEndsAt: number | null;
   waitingStartedAt: number | null;
   resultEndsAt: number | null;
+
   roundSettled: boolean;
+
+  confirmationDepth: number;
+  sourceTipHeight: number | null;
+
+  pollAttempts: number;
+  sourceErrors: number;
+  reorgCount: number;
+
+  blockFoundAt: number | null;
 };
 
 const BETTING_SECONDS = 30;
 
+/*
+  ZKSpin demo confirmation policy.
+
+  IMPORTANT:
+
+  This is BLOCK DEPTH.
+
+  It is NOT:
+  "CipherScan returned the same hash 3 times."
+
+  Example:
+
+  Target N
+  Tip N     = depth 1
+  Tip N + 1 = depth 2
+  Tip N + 2 = depth 3
+*/
+const CONFIRMATIONS_REQUIRED = 3;
+
+const POLL_INTERVAL_MS = 5000;
+
 const STORAGE_KEY =
-  "zkspin-demo-state-v1";
+  "zkspin-demo-state-v2";
 
 const wheelNumbers: RouletteResult[] = [
   0, 28, 9, 26, 30, 11, 7, 20, 32, 17,
@@ -174,12 +216,22 @@ export default function Home() {
   ] =
     useState<string | null>(null);
 
+  /*
+    LOCKED ROUND DATA
+  */
+
   const [
     targetBlockHeight,
     setTargetBlockHeight,
   ] =
     useState<number | null>(null);
 
+  /*
+    This starts as the candidate hash.
+
+    Once depth reaches 3/3, this becomes
+    the verified hash used by the verifier.
+  */
   const [
     roundBlockHash,
     setRoundBlockHash,
@@ -220,6 +272,10 @@ export default function Home() {
       null
     );
 
+  /*
+    TIMERS
+  */
+
   const [
     bettingTimeLeft,
     setBettingTimeLeft,
@@ -250,6 +306,46 @@ export default function Home() {
   ] =
     useState<number | null>(null);
 
+  /*
+    CONFIRMATION / DIAGNOSTICS
+  */
+
+  const [
+    confirmationDepth,
+    setConfirmationDepth,
+  ] =
+    useState(0);
+
+  const [
+    sourceTipHeight,
+    setSourceTipHeight,
+  ] =
+    useState<number | null>(null);
+
+  const [
+    pollAttempts,
+    setPollAttempts,
+  ] =
+    useState(0);
+
+  const [
+    sourceErrors,
+    setSourceErrors,
+  ] =
+    useState(0);
+
+  const [
+    reorgCount,
+    setReorgCount,
+  ] =
+    useState(0);
+
+  const [
+    blockFoundAt,
+    setBlockFoundAt,
+  ] =
+    useState<number | null>(null);
+
   const [
     roundSettled,
     setRoundSettled,
@@ -259,7 +355,15 @@ export default function Home() {
   const [history, setHistory] =
     useState<HistoryEntry[]>([]);
 
+  /*
+    Prevent duplicate async resolution
+    and overlapping polls.
+  */
+
   const resolvingBlockRef =
+    useRef(false);
+
+  const pollInFlightRef =
     useRef(false);
 
   const wagerAmount =
@@ -282,15 +386,18 @@ export default function Home() {
     roundPhase === "SPINNING";
 
   /*
-    START A FRESH 30-SECOND ROUND
+    START NEW ROUND
   */
+
   const startNewRound =
     useCallback(() => {
       const deadline =
         Date.now() +
         BETTING_SECONDS * 1000;
 
-      setRoundPhase("BETTING");
+      setRoundPhase(
+        "BETTING"
+      );
 
       setBettingEndsAt(
         deadline
@@ -311,6 +418,7 @@ export default function Home() {
       setSelectedBet(null);
 
       setRoundBet(null);
+
       setRoundWager(null);
 
       setTargetBlockHeight(
@@ -326,18 +434,38 @@ export default function Home() {
       );
 
       setResult(null);
+
       setOutcome(null);
 
       setRoundSettled(false);
 
+      /*
+        Reset confirmation engine.
+      */
+
+      setConfirmationDepth(0);
+
+      setSourceTipHeight(null);
+
+      setPollAttempts(0);
+
+      setSourceErrors(0);
+
+      setReorgCount(0);
+
+      setBlockFoundAt(null);
+
       resolvingBlockRef.current =
+        false;
+
+      pollInFlightRef.current =
         false;
     }, []);
 
   /*
-    RESTORE THIS BROWSER'S
-    SAVED DEMO STATE
+    RESTORE SAVED BROWSER STATE
   */
+
   useEffect(() => {
     const raw =
       window.localStorage.getItem(
@@ -346,7 +474,9 @@ export default function Home() {
 
     if (!raw) {
       startNewRound();
+
       setHydrated(true);
+
       return;
     }
 
@@ -358,6 +488,16 @@ export default function Home() {
 
       const now =
         Date.now();
+
+      if (
+        saved.version !== 2
+      ) {
+        startNewRound();
+
+        setHydrated(true);
+
+        return;
+      }
 
       if (
         typeof saved.betAmount ===
@@ -393,7 +533,8 @@ export default function Home() {
       );
 
       setRoundBet(
-        saved.roundBet ?? null
+        saved.roundBet ??
+          null
       );
 
       setRoundWager(
@@ -429,22 +570,66 @@ export default function Home() {
           false
       );
 
-      /*
-        RESTORE A ROUND THAT WAS
-        WAITING FOR A BLOCK.
+      setConfirmationDepth(
+        saved.confirmationDepth ??
+          0
+      );
 
-        IF THE PAGE WAS REFRESHED
-        DURING SPINNING, WE GO BACK
-        TO THE SAME LOCKED BLOCK AND
-        VERIFY IT AGAIN.
+      setSourceTipHeight(
+        saved.sourceTipHeight ??
+          null
+      );
+
+      setPollAttempts(
+        saved.pollAttempts ??
+          0
+      );
+
+      setSourceErrors(
+        saved.sourceErrors ??
+          0
+      );
+
+      setReorgCount(
+        saved.reorgCount ??
+          0
+      );
+
+      setBlockFoundAt(
+        saved.blockFoundAt ??
+          null
+      );
+
+      /*
+        RESTORE ACTIVE BLOCK ROUND.
+
+        WAITING:
+        target block hasn't appeared.
+
+        CONFIRMING:
+        target hash exists but needs depth.
+
+        REORG_DETECTED:
+        continue checking SAME target height.
+
+        SPINNING:
+        refresh means we re-check the same
+        locked block instead of trusting
+        an interrupted animation.
       */
+
+      const activeBlockRound =
+        saved.roundPhase ===
+          "WAITING" ||
+        saved.roundPhase ===
+          "CONFIRMING" ||
+        saved.roundPhase ===
+          "REORG_DETECTED" ||
+        saved.roundPhase ===
+          "SPINNING";
+
       if (
-        (
-          saved.roundPhase ===
-            "WAITING" ||
-          saved.roundPhase ===
-            "SPINNING"
-        ) &&
+        activeBlockRound &&
         typeof saved
           .targetBlockHeight ===
           "number" &&
@@ -455,10 +640,6 @@ export default function Home() {
         const startedAt =
           saved.waitingStartedAt ??
           now;
-
-        setRoundPhase(
-          "WAITING"
-        );
 
         setWaitingStartedAt(
           startedAt
@@ -480,15 +661,34 @@ export default function Home() {
           null
         );
 
+        /*
+          If we already had a candidate hash,
+          resume confirmation.
+
+          Otherwise resume waiting.
+        */
+
+        if (
+          saved.roundBlockHash
+        ) {
+          setRoundPhase(
+            "CONFIRMING"
+          );
+        } else {
+          setRoundPhase(
+            "WAITING"
+          );
+        }
+
         setHydrated(true);
+
         return;
       }
 
       /*
-        RESTORE A RESULT THAT
-        IS STILL INSIDE ITS
-        3-SECOND DISPLAY WINDOW
+        RESTORE RESULT DISPLAY
       */
+
       if (
         saved.roundPhase ===
           "RESULT" &&
@@ -512,13 +712,14 @@ export default function Home() {
         );
 
         setHydrated(true);
+
         return;
       }
 
       /*
-        RESTORE THE ACTIVE
-        BETTING DEADLINE
+        RESTORE ACTIVE BETTING TIMER
       */
+
       if (
         saved.roundPhase ===
           "BETTING" &&
@@ -553,13 +754,16 @@ export default function Home() {
         );
 
         setHydrated(true);
+
         return;
       }
 
       /*
-        OLD ROUND ALREADY ENDED.
+        Stored round is no longer usable.
       */
+
       startNewRound();
+
       setHydrated(true);
     } catch {
       window.localStorage.removeItem(
@@ -567,14 +771,15 @@ export default function Home() {
       );
 
       startNewRound();
+
       setHydrated(true);
     }
   }, [startNewRound]);
 
   /*
-    SAVE THIS BROWSER'S
-    CURRENT DEMO STATE
+    SAVE STATE
   */
+
   useEffect(() => {
     if (!hydrated) {
       return;
@@ -582,11 +787,12 @@ export default function Home() {
 
     const state: StoredState =
       {
-        version: 1,
+        version: 2,
 
         roundPhase,
 
         betAmount,
+
         balance,
 
         targetBlockHeight,
@@ -596,11 +802,13 @@ export default function Home() {
         roundVerifiedPocket,
 
         roundBet,
+
         roundWager,
 
         selectedBet,
 
         result,
+
         outcome,
 
         history,
@@ -612,6 +820,18 @@ export default function Home() {
         resultEndsAt,
 
         roundSettled,
+
+        confirmationDepth,
+
+        sourceTipHeight,
+
+        pollAttempts,
+
+        sourceErrors,
+
+        reorgCount,
+
+        blockFoundAt,
       };
 
     window.localStorage.setItem(
@@ -638,11 +858,18 @@ export default function Home() {
     waitingStartedAt,
     resultEndsAt,
     roundSettled,
+    confirmationDepth,
+    sourceTipHeight,
+    pollAttempts,
+    sourceErrors,
+    reorgCount,
+    blockFoundAt,
   ]);
 
   /*
     LOAD CURRENT ZCASH STATUS
   */
+
   useEffect(() => {
     async function loadZcashStatus() {
       try {
@@ -670,8 +897,13 @@ export default function Home() {
           data.connected
         );
       } catch {
-        setBlockHeight(null);
-        setBestBlockHash(null);
+        setBlockHeight(
+          null
+        );
+
+        setBestBlockHash(
+          null
+        );
 
         setTestnetConnected(
           false
@@ -683,9 +915,9 @@ export default function Home() {
   }, []);
 
   /*
-    TIMESTAMP-BASED
-    BETTING COUNTDOWN
+    TIMESTAMP BETTING TIMER
   */
+
   useEffect(() => {
     if (
       !hydrated ||
@@ -734,8 +966,9 @@ export default function Home() {
   ]);
 
   /*
-    BETTING DEADLINE EXPIRED
+    MISSED ROUND
   */
+
   useEffect(() => {
     if (
       !hydrated ||
@@ -754,7 +987,7 @@ export default function Home() {
       null
     );
 
-    const resetTimer =
+    const timer =
       window.setTimeout(
         startNewRound,
         2000
@@ -762,7 +995,7 @@ export default function Home() {
 
     return () => {
       window.clearTimeout(
-        resetTimer
+        timer
       );
     };
   }, [
@@ -773,13 +1006,23 @@ export default function Home() {
   ]);
 
   /*
-    TIMESTAMP-BASED
-    BLOCK WAIT TIMER
+    WAIT TIMER
+
+    Runs both while waiting for the
+    target block and while confirming it.
   */
+
   useEffect(() => {
-    if (
-      roundPhase !==
+    const active =
+      roundPhase ===
         "WAITING" ||
+      roundPhase ===
+        "CONFIRMING" ||
+      roundPhase ===
+        "REORG_DETECTED";
+
+    if (
+      !active ||
       waitingStartedAt ===
         null
     ) {
@@ -819,8 +1062,9 @@ export default function Home() {
   ]);
 
   /*
-    RESTORE / END RESULT SCREEN
+    END RESULT DISPLAY
   */
+
   useEffect(() => {
     if (
       roundPhase !==
@@ -837,6 +1081,7 @@ export default function Home() {
 
     if (remaining <= 0) {
       startNewRound();
+
       return;
     }
 
@@ -858,27 +1103,59 @@ export default function Home() {
   ]);
 
   /*
-    WATCH LOCKED FUTURE BLOCK
+    BLOCK CONFIRMATION ENGINE
+
+    This effect runs while:
+
+    WAITING
+    CONFIRMING
+    REORG_DETECTED
+
+    It always checks the SAME
+    locked target height.
   */
+
   useEffect(() => {
-    if (
-      roundPhase !==
+    const active =
+      roundPhase ===
         "WAITING" ||
+      roundPhase ===
+        "CONFIRMING" ||
+      roundPhase ===
+        "REORG_DETECTED";
+
+    if (
+      !active ||
       targetBlockHeight ===
         null
     ) {
       return;
     }
 
-    async function checkTargetBlock() {
+    async function checkRoundBlock() {
       if (
+        pollInFlightRef.current ||
         resolvingBlockRef.current
       ) {
         return;
       }
 
+      pollInFlightRef.current =
+        true;
+
+      setPollAttempts(
+        (current) =>
+          current + 1
+      );
+
       try {
-        const response =
+        /*
+          1. GET TARGET BLOCK HASH
+
+          Target height NEVER changes.
+        */
+
+        const blockResponse =
           await fetch(
             `/api/zcash-block/${targetBlockHeight}`,
             {
@@ -887,22 +1164,226 @@ export default function Home() {
             }
           );
 
-        const data =
-          await response.json();
+        const blockData =
+          await blockResponse.json();
+
+        /*
+          2. GET CURRENT SOURCE TIP
+
+          This is how confirmation depth
+          is calculated.
+
+          NOT by number of polls.
+        */
+
+        const statusResponse =
+          await fetch(
+            "/api/zcash-status",
+            {
+              cache:
+                "no-store",
+            }
+          );
+
+        const statusData =
+          await statusResponse.json();
 
         if (
-          !data.found ||
-          !data.hash
+          !statusData.connected ||
+          typeof statusData.height !==
+            "number"
         ) {
+          setSourceErrors(
+            (current) =>
+              current + 1
+          );
+
+          setTestnetConnected(
+            false
+          );
+
           return;
         }
+
+        const tipHeight =
+          statusData.height;
+
+        setSourceTipHeight(
+          tipHeight
+        );
+
+        setBlockHeight(
+          tipHeight
+        );
+
+        setBestBlockHash(
+          statusData.bestBlockHash ??
+            null
+        );
+
+        setTestnetConnected(
+          true
+        );
+
+        /*
+          Target not available through
+          CipherScan yet.
+
+          This may mean:
+
+          - target not mined yet
+          - CipherScan is lagging
+
+          With one source, we cannot
+          distinguish perfectly.
+        */
+
+        if (
+          !blockData.found ||
+          !blockData.hash
+        ) {
+          setRoundPhase(
+            "WAITING"
+          );
+
+          setConfirmationDepth(
+            0
+          );
+
+          return;
+        }
+
+        const observedHash =
+          String(
+            blockData.hash
+          ).toLowerCase();
+
+        /*
+          First time target block
+          has been observed.
+        */
+
+        if (
+          roundBlockHash ===
+            null
+        ) {
+          setRoundBlockHash(
+            observedHash
+          );
+
+          setBlockFoundAt(
+            Date.now()
+          );
+        }
+
+        /*
+          REORG DETECTION
+
+          SAME HEIGHT
+          DIFFERENT HASH
+        */
+
+        if (
+          roundBlockHash !==
+            null &&
+          observedHash !==
+            roundBlockHash
+        ) {
+          setRoundBlockHash(
+            observedHash
+          );
+
+          setRoundVerifiedPocket(
+            null
+          );
+
+          setReorgCount(
+            (current) =>
+              current + 1
+          );
+
+          setRoundPhase(
+            "REORG_DETECTED"
+          );
+
+          /*
+            The depth is recalculated
+            using the current canonical
+            chain tip.
+
+            We never switch to N+1.
+          */
+
+          const newDepth =
+            Math.max(
+              1,
+              tipHeight -
+                targetBlockHeight +
+                1
+            );
+
+          setConfirmationDepth(
+            newDepth
+          );
+
+          return;
+        }
+
+        /*
+          ACTUAL BLOCK DEPTH
+
+          Example:
+
+          target = 100
+          tip = 100 → 1
+
+          target = 100
+          tip = 101 → 2
+
+          target = 100
+          tip = 102 → 3
+        */
+
+        const depth =
+          Math.max(
+            1,
+            tipHeight -
+              targetBlockHeight +
+              1
+          );
+
+        setConfirmationDepth(
+          depth
+        );
+
+        /*
+          NOT DEEP ENOUGH YET
+        */
+
+        if (
+          depth <
+          CONFIRMATIONS_REQUIRED
+        ) {
+          setRoundPhase(
+            "CONFIRMING"
+          );
+
+          return;
+        }
+
+        /*
+          VERIFIED.
+
+          ONLY NOW does the
+          roulette derivation run.
+        */
 
         resolvingBlockRef.current =
           true;
 
         const pocket =
           await verifyBlockHash(
-            data.hash
+            observedHash
           );
 
         if (
@@ -915,7 +1396,7 @@ export default function Home() {
         }
 
         setRoundBlockHash(
-          data.hash
+          observedHash
         );
 
         setRoundVerifiedPocket(
@@ -937,11 +1418,16 @@ export default function Home() {
           return;
         }
 
+        /*
+          VERIFIED WHEEL SPIN
+        */
+
         setRoundPhase(
           "SPINNING"
         );
 
         setResult(null);
+
         setOutcome(null);
 
         const segmentAngle =
@@ -1002,9 +1488,10 @@ export default function Home() {
             );
 
             /*
-              SETTLE THIS DEMO ROUND
-              ONLY ONCE
+              TEST ZEC DEMO
+              SETTLEMENT
             */
+
             if (
               !roundSettled
             ) {
@@ -1062,19 +1549,22 @@ export default function Home() {
           3000
         );
       } catch {
-        /*
-          Keep waiting.
-          Next poll retries.
-        */
+        setSourceErrors(
+          (current) =>
+            current + 1
+        );
+      } finally {
+        pollInFlightRef.current =
+          false;
       }
     }
 
-    checkTargetBlock();
+    checkRoundBlock();
 
     const interval =
       window.setInterval(
-        checkTargetBlock,
-        5000
+        checkRoundBlock,
+        POLL_INTERVAL_MS
       );
 
     return () => {
@@ -1085,6 +1575,7 @@ export default function Home() {
   }, [
     roundPhase,
     targetBlockHeight,
+    roundBlockHash,
     roundBet,
     roundWager,
     roundSettled,
@@ -1093,6 +1584,7 @@ export default function Home() {
   /*
     SUBMIT DEMO ROUND
   */
+
   async function handleSpin() {
     const wager =
       Number(betAmount);
@@ -1122,6 +1614,11 @@ export default function Home() {
     );
 
     try {
+      /*
+        Read the current tip at the
+        exact moment this round locks.
+      */
+
       const response =
         await fetch(
           "/api/zcash-status",
@@ -1153,6 +1650,13 @@ export default function Home() {
       const currentBlock =
         data.height;
 
+      /*
+        COMMIT TO N + 1.
+
+        This height will NEVER
+        change during this round.
+      */
+
       const nextBlock =
         currentBlock + 1;
 
@@ -1169,6 +1673,10 @@ export default function Home() {
         true
       );
 
+      /*
+        Freeze TEST prediction.
+      */
+
       setRoundBet(
         selectedBet
       );
@@ -1181,6 +1689,10 @@ export default function Home() {
         (current) =>
           current - wager
       );
+
+      /*
+        Close betting.
+      */
 
       setBettingEndsAt(
         null
@@ -1201,6 +1713,10 @@ export default function Home() {
         0
       );
 
+      /*
+        LOCK HEIGHT
+      */
+
       setTargetBlockHeight(
         nextBlock
       );
@@ -1213,14 +1729,42 @@ export default function Home() {
         null
       );
 
+      /*
+        Reset confirmation diagnostics.
+      */
+
+      setConfirmationDepth(
+        0
+      );
+
+      setSourceTipHeight(
+        currentBlock
+      );
+
+      setPollAttempts(0);
+
+      setSourceErrors(0);
+
+      setReorgCount(0);
+
+      setBlockFoundAt(null);
+
       setResult(null);
+
       setOutcome(null);
 
-      setRoundSettled(false);
+      setRoundSettled(
+        false
+      );
 
-      setResultEndsAt(null);
+      setResultEndsAt(
+        null
+      );
 
       resolvingBlockRef.current =
+        false;
+
+      pollInFlightRef.current =
         false;
 
       setRoundPhase(
@@ -1312,9 +1856,41 @@ export default function Home() {
 
           </div>
         ) : roundPhase ===
+          "CONFIRMING" ? (
+          <div>
+
+            <p className="wheel-label">
+              CONFIRMING BLOCK{" "}
+              {targetBlockHeight ??
+                "—"}
+            </p>
+
+            <p className="wheel-label">
+              DEPTH:{" "}
+              {confirmationDepth}/
+              {CONFIRMATIONS_REQUIRED}
+            </p>
+
+          </div>
+        ) : roundPhase ===
+          "REORG_DETECTED" ? (
+          <div>
+
+            <p className="wheel-label">
+              REORG DETECTED
+            </p>
+
+            <p className="wheel-label">
+              RECHECKING BLOCK{" "}
+              {targetBlockHeight ??
+                "—"}
+            </p>
+
+          </div>
+        ) : roundPhase ===
           "SPINNING" ? (
           <p className="wheel-label">
-            VERIFIED BLOCK FOUND —
+            BLOCK VERIFIED —
             SPINNING...
           </p>
         ) : roundPhase ===
@@ -1336,7 +1912,8 @@ export default function Home() {
               )}
             </em>
 
-            {outcome !== null && (
+            {outcome !==
+              null && (
               <p className="round-outcome">
                 {outcome}
               </p>
@@ -1370,6 +1947,12 @@ export default function Home() {
             "WAITING"
               ? "WAITING"
               : roundPhase ===
+                "CONFIRMING"
+              ? `CONFIRMING ${confirmationDepth}/${CONFIRMATIONS_REQUIRED}`
+              : roundPhase ===
+                "REORG_DETECTED"
+              ? "REORG"
+              : roundPhase ===
                   "SPINNING" ||
                 roundPhase ===
                   "RESULT"
@@ -1381,28 +1964,14 @@ export default function Home() {
 
         <div className="verification-row">
           <span>
-            Current Zcash Block
+            Source Tip
           </span>
 
           <strong>
-            {blockHeight ??
+            {sourceTipHeight ??
+              blockHeight ??
               "—"}
           </strong>
-        </div>
-
-        <div className="verification-row">
-          <span>
-            Current Block Hash
-          </span>
-
-          <code>
-            {bestBlockHash
-              ? `${bestBlockHash.slice(
-                  0,
-                  16
-                )}...`
-              : "—"}
-          </code>
         </div>
 
         <div className="verification-row">
@@ -1418,7 +1987,7 @@ export default function Home() {
 
         <div className="verification-row">
           <span>
-            Round Hash
+            Candidate Hash
           </span>
 
           <code>
@@ -1436,6 +2005,18 @@ export default function Home() {
 
         <div className="verification-row">
           <span>
+            Block Depth
+          </span>
+
+          <strong>
+            {roundBlockHash
+              ? `${confirmationDepth}/${CONFIRMATIONS_REQUIRED}`
+              : "—"}
+          </strong>
+        </div>
+
+        <div className="verification-row">
+          <span>
             Verified Pocket
           </span>
 
@@ -1447,18 +2028,45 @@ export default function Home() {
 
         <div className="verification-row">
           <span>
-            Block Wait Time
+            Total Wait Time
           </span>
 
           <strong>
-            {roundPhase ===
-              "WAITING" ||
-            roundPhase ===
-              "SPINNING"
+            {targetBlockHeight
               ? formatTime(
                   waitingSeconds
                 )
               : "—"}
+          </strong>
+        </div>
+
+        <div className="verification-row">
+          <span>
+            Poll Attempts
+          </span>
+
+          <strong>
+            {pollAttempts}
+          </strong>
+        </div>
+
+        <div className="verification-row">
+          <span>
+            Source Errors
+          </span>
+
+          <strong>
+            {sourceErrors}
+          </strong>
+        </div>
+
+        <div className="verification-row">
+          <span>
+            Reorgs Detected
+          </span>
+
+          <strong>
+            {reorgCount}
           </strong>
         </div>
 
@@ -1477,7 +2085,13 @@ export default function Home() {
               ? "LOCKING ROUND"
               : roundPhase ===
                 "WAITING"
-              ? "BETTING CLOSED"
+              ? "WAITING FOR BLOCK"
+              : roundPhase ===
+                "CONFIRMING"
+              ? "VERIFYING BLOCK"
+              : roundPhase ===
+                "REORG_DETECTED"
+              ? "REORG DETECTED"
               : roundPhase ===
                 "SPINNING"
               ? "BLOCK VERIFIED"
@@ -1494,7 +2108,11 @@ export default function Home() {
                   bettingTimeLeft
                 )
               : roundPhase ===
-                "WAITING"
+                  "WAITING" ||
+                roundPhase ===
+                  "CONFIRMING" ||
+                roundPhase ===
+                  "REORG_DETECTED"
               ? formatTime(
                   waitingSeconds
                 )
@@ -1591,7 +2209,7 @@ export default function Home() {
             <button
               className={
                 selectedBet ===
-                "RED"
+                  "RED"
                   ? "selected"
                   : ""
               }
@@ -1610,7 +2228,7 @@ export default function Home() {
             <button
               className={
                 selectedBet ===
-                "BLACK"
+                  "BLACK"
                   ? "selected"
                   : ""
               }
@@ -1629,7 +2247,7 @@ export default function Home() {
             <button
               className={
                 selectedBet ===
-                "ODD"
+                  "ODD"
                   ? "selected"
                   : ""
               }
@@ -1648,7 +2266,7 @@ export default function Home() {
             <button
               className={
                 selectedBet ===
-                "EVEN"
+                  "EVEN"
                   ? "selected"
                   : ""
               }
@@ -1689,6 +2307,12 @@ export default function Home() {
               "WAITING"
             ? `WAITING FOR BLOCK ${targetBlockHeight}`
             : roundPhase ===
+              "CONFIRMING"
+            ? `CONFIRMING ${confirmationDepth}/${CONFIRMATIONS_REQUIRED}`
+            : roundPhase ===
+              "REORG_DETECTED"
+            ? "REORG DETECTED"
+            : roundPhase ===
               "SPINNING"
             ? "SPINNING..."
             : roundPhase ===
@@ -1728,9 +2352,7 @@ export default function Home() {
                       round.result
                     ).toLowerCase()}`}
                   >
-                    {
-                      round.result
-                    }
+                    {round.result}
                   </div>
 
                   <div className="history-details">
@@ -1738,9 +2360,7 @@ export default function Home() {
                     <span>
                       BET:{" "}
                       {round.bet} •{" "}
-                      {
-                        round.amount
-                      }{" "}
+                      {round.amount}{" "}
                       TEST ZEC
                     </span>
 
