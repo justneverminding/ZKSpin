@@ -129,14 +129,16 @@ setHistory((current) => [
           <p className="subtitle">Zero Knowledge Roulette</p>
         </div>
 
-        <div className="balance">
-          <span>Balance</span>
-          <strong>{balance} TEST ZEC</strong>
-        </div>
-        
-        <div className="network-status">
-  <span>ZCASH TESTNET</span>
-  <strong>BLOCK: —</strong>
+        <div className="topbar-info">
+  <div className="balance">
+    <span>Balance</span>
+    <strong>{balance} TEST ZEC</strong>
+  </div>
+
+  <div className="network-status">
+    <span>ZCASH TESTNET</span>
+    <strong>BLOCK: —</strong>
+  </div>
 </div>
         
       </header>
