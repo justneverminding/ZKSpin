@@ -19,22 +19,19 @@ export async function GET() {
         response.statusText
       );
 
-      return NextResponse.json(
-        {
-          connected: false,
-          height: null,
-          bestBlockHash: null,
-        },
-        {
-          status: 200,
-        }
-      );
+      return NextResponse.json({
+        connected: false,
+        height: null,
+        bestBlockHash: null,
+        error: `CipherScan returned HTTP ${response.status}`,
+      });
     }
 
     const data = await response.json();
 
     /*
-      CipherScan may return an unexpected response.
+      CipherScan may return different response shapes.
+
       Never assume data.height exists.
     */
 
@@ -54,6 +51,12 @@ export async function GET() {
         ? data.data.hash
         : null;
 
+    /*
+      If CipherScan responded successfully but
+      did not give us a usable block height,
+      treat the source as unavailable.
+    */
+
     if (height === null) {
       console.error(
         "CipherScan returned unexpected data:",
@@ -64,6 +67,7 @@ export async function GET() {
         connected: false,
         height: null,
         bestBlockHash: null,
+        error: "CipherScan returned invalid block data",
       });
     }
 
@@ -71,6 +75,7 @@ export async function GET() {
       connected: true,
       height,
       bestBlockHash,
+      error: null,
     });
   } catch (error) {
     console.error(
@@ -82,6 +87,7 @@ export async function GET() {
       connected: false,
       height: null,
       bestBlockHash: null,
+      error: "Unable to reach CipherScan",
     });
   }
 }
