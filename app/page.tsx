@@ -107,35 +107,18 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="prediction">
+       <div className="prediction">
   <div className="prediction-header">
     <span>PREDICT THE RESULT</span>
-
-    <strong>
-      {selectedNumber === null
-        ? "SELECT 0–36"
-        : `NUMBER ${selectedNumber}`}
-    </strong>
   </div>
 
-  <div className="number-grid">
-    {predictionNumbers.map((number) => (
-      <button
-        key={number}
-        className={
-          selectedNumber === number
-            ? "number-button selected"
-            : "number-button"
-        }
-        onClick={() => setSelectedNumber(number)}
-        disabled={spinning}
-      >
-        {number}
-      </button>
-    ))}
+  <div className="simple-bet-options">
+    <button>RED</button>
+    <button>BLACK</button>
+    <button>ODD</button>
+    <button>EVEN</button>
   </div>
 </div>
-
         <button
   className="spin-button"
   onClick={handleSpin}
