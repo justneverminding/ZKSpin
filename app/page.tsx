@@ -290,11 +290,17 @@ setHistory((current) => [
     RESULT: {getResultColor(round.result)}
   </p>
 
-  <strong>
-    {round.outcome === "WIN"
-      ? `WIN • +${round.amount} TEST ZEC`
-      : `LOSS • -${round.amount} TEST ZEC`}
-  </strong>
+<strong
+  className={
+    round.outcome === "WIN"
+      ? "history-win"
+      : "history-loss"
+  }
+>
+  {round.outcome === "WIN"
+    ? `WIN • +${round.amount} TEST ZEC`
+    : `LOSS • -${round.amount} TEST ZEC`}
+</strong>
 </div>
   </div>
 ))}
