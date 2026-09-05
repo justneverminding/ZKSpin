@@ -229,6 +229,38 @@ setHistory((current) => [
 )}
       </section>
 
+    )}
+      </section>
+
+      <section className="verification-panel">
+        <div className="verification-header">
+          <span>BLOCKCHAIN VERIFICATION</span>
+
+          <strong>
+            {testnetConnected ? "VERIFIED" : "OFFLINE"}
+          </strong>
+        </div>
+
+        <div className="verification-row">
+          <span>Zcash Testnet Block</span>
+          <strong>{blockHeight ?? "—"}</strong>
+        </div>
+
+        <div className="verification-row">
+          <span>Block Hash</span>
+          <code>
+            {bestBlockHash
+              ? `${bestBlockHash.slice(0, 16)}...`
+              : "—"}
+          </code>
+        </div>
+
+        <div className="verification-row">
+          <span>Derived Pocket</span>
+          <strong>{verifiedPocket ?? "—"}</strong>
+        </div>
+      </section>
+
       <section className="bet-panel">
         <div className="bet-amount">
           <span>Bet amount</span>
