@@ -104,6 +104,43 @@ const invalidBet =
   loadZcashStatus();
 }, []);
 
+  useEffect(() => {
+  if (!waitingForBlock || targetBlockHeight === null) {
+    return;
+  }
+
+  async function checkTargetBlock() {
+    try {
+      const response = await fetch(
+        `/api/zcash-block/${targetBlockHeight}`
+      );
+
+      const data = await response.json();
+
+      if (!data.found || !data.hash) {
+        return;
+      }
+
+      const pocket = verifyBlockHash(data.hash);
+
+      setRoundBlockHash(data.hash);
+      setRoundVerifiedPocket(pocket);
+      setWaitingForBlock(false);
+    } catch {
+      // Keep waiting and try again.
+    }
+  }
+
+  checkTargetBlock();
+
+  const interval = setInterval(
+    checkTargetBlock,
+    5000
+  );
+
+  return () => clearInterval(interval);
+}, [waitingForBlock, targetBlockHeight]);
+
 function lockNextBlock() {
   if (blockHeight === null) return;
 
@@ -280,6 +317,28 @@ setHistory((current) => [
           <span>Derived Pocket</span>
           <strong>{verifiedPocket ?? "—"}</strong>
         </div>
+        <div className="verification-row">
+  <span>Locked Block</span>
+  <strong>{targetBlockHeight ?? "—"}</strong>
+</div>
+
+<div className="verification-row">
+  <span>Round Hash</span>
+  <code>
+    {roundBlockHash
+      ? `${roundBlockHash.slice(0, 16)}...`
+      : waitingForBlock
+      ? "WAITING..."
+      : "—"}
+  </code>
+</div>
+
+<div className="verification-row">
+  <span>Round Pocket</span>
+  <strong>
+    {roundVerifiedPocket ?? "—"}
+  </strong>
+</div>
         
         <button
   type="button"
