@@ -26,7 +26,16 @@ export default function Home() {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
 
-  const [betAmount, setBetAmount] = useState(1);
+ const [betAmount, setBetAmount] = useState("1");
+
+const wagerAmount = Number(betAmount);
+
+const invalidBet =
+  betAmount.trim() === "" ||
+  !Number.isFinite(wagerAmount) ||
+  wagerAmount < 1 ||
+  wagerAmount > balance;
+  
   const [balance, setBalance] = useState(100);
   const [history, setHistory] = useState<number[]>([]);
   const [selectedNumber, setSelectedNumber] =
@@ -37,11 +46,15 @@ export default function Home() {
   useState<"WIN" | "LOSS" | null>(null);
 
   function handleSpin() {
-  if (spinning) return;
-  if (selectedBet === null) return;
-  if (betAmount > balance) return;
+  const wager = Number(betAmount);
 
-  setBalance((current) => current - betAmount);
+if (spinning) return;
+if (selectedBet === null) return;
+if (!Number.isFinite(wager)) return;
+if (wager < 1) return;
+if (wager > balance) return;
+
+setBalance((current) => current - wager);
 
   setSpinning(true);
   setResult(null);
@@ -84,7 +97,7 @@ if (won) {
   setOutcome("WIN");
 
   setBalance((current) =>
-    current + betAmount * 2
+    current + wager * 2
   );
 } else {
   setOutcome("LOSS");
@@ -138,10 +151,17 @@ if (won) {
         <div className="bet-amount">
           <span>Bet amount</span>
 
-          <div className="amount-control">
+        <div className="amount-control">
   <button
     onClick={() =>
-      setBetAmount((current) => Math.max(1, current - 1))
+      setBetAmount((current) =>
+        String(
+          Math.max(
+            1,
+            Number(current || 0) - 1
+          )
+        )
+      )
     }
     disabled={spinning}
   >
@@ -150,15 +170,12 @@ if (won) {
 
   <input
     type="number"
-    min="0"
+    min="1"
+    step="1"
     value={betAmount}
-    onChange={(event) => {
-      const value = Number(event.target.value);
-
-      if (value >= 1) {
-        setBetAmount(value);
-      }
-    }}
+    onChange={(event) =>
+      setBetAmount(event.target.value)
+    }
     disabled={spinning}
   />
 
@@ -166,7 +183,9 @@ if (won) {
 
   <button
     onClick={() =>
-      setBetAmount((current) => current + 1)
+      setBetAmount((current) =>
+        String(Number(current || 0) + 1)
+      )
     }
     disabled={spinning}
   >
@@ -214,14 +233,14 @@ if (won) {
 </button>
   </div>
 </div>
-   <button
+  <button
   className="spin-button"
   onClick={handleSpin}
-disabled={
-  spinning ||
-  selectedBet === null ||
-  betAmount > balance
-}
+  disabled={
+    spinning ||
+    selectedBet === null ||
+    invalidBet
+  }
 >
   {spinning ? "SPINNING..." : "SPIN"}
 </button>
