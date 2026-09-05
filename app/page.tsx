@@ -82,6 +82,10 @@ const won =
 
 if (won) {
   setOutcome("WIN");
+
+  setBalance((current) =>
+    current + betAmount * 2
+  );
 } else {
   setOutcome("LOSS");
 }
@@ -144,7 +148,21 @@ if (won) {
     -
   </button>
 
-  <strong>{betAmount} TEST ZEC</strong>
+  <input
+    type="number"
+    min="1"
+    value={betAmount}
+    onChange={(event) => {
+      const value = Number(event.target.value);
+
+      if (value >= 1) {
+        setBetAmount(value);
+      }
+    }}
+    disabled={spinning}
+  />
+
+  <span>TEST ZEC</span>
 
   <button
     onClick={() =>
