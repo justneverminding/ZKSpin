@@ -5,8 +5,13 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
+    /*
+      Get the latest block from the Zcash testnet
+      CipherScan API.
+    */
+
     const response = await fetch(
-      "https://api.cipherscan.app/api/v1/zcash/testnet/block/latest",
+      "https://api.testnet.cipherscan.app/api/block/latest",
       {
         cache: "no-store",
       }
@@ -30,9 +35,11 @@ export async function GET() {
     const data = await response.json();
 
     /*
-      CipherScan may return different response shapes.
+      CipherScan block response.
 
-      Never assume data.height exists.
+      We defensively check all possible fields
+      so the application never crashes if the
+      response format changes.
     */
 
     const height =
@@ -45,16 +52,13 @@ export async function GET() {
     const bestBlockHash =
       typeof data?.hash === "string"
         ? data.hash
-        : typeof data?.bestBlockHash === "string"
-        ? data.bestBlockHash
         : typeof data?.data?.hash === "string"
         ? data.data.hash
         : null;
 
     /*
-      If CipherScan responded successfully but
-      did not give us a usable block height,
-      treat the source as unavailable.
+      A successful HTTP response without a valid
+      height is still considered unusable.
     */
 
     if (height === null) {
@@ -67,7 +71,8 @@ export async function GET() {
         connected: false,
         height: null,
         bestBlockHash: null,
-        error: "CipherScan returned invalid block data",
+        error:
+          "CipherScan returned invalid block data",
       });
     }
 
@@ -87,7 +92,8 @@ export async function GET() {
       connected: false,
       height: null,
       bestBlockHash: null,
-      error: "Unable to reach CipherScan",
+      error:
+        "Unable to reach CipherScan",
     });
   }
 }
