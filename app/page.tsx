@@ -1017,11 +1017,11 @@ export default function Home() {
       return;
     }
 
-    const timer =
-      window.setTimeout(
-        startNewRound,
-        remaining
-      );
+   const timer =
+  window.setTimeout(
+    startNewRound,
+    3000
+  );
 
     return () => {
       window.clearTimeout(timer);
