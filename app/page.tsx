@@ -150,7 +150,7 @@ if (won) {
 
   <input
     type="number"
-    min="1"
+    min="0"
     value={betAmount}
     onChange={(event) => {
       const value = Number(event.target.value);
