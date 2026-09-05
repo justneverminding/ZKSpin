@@ -81,6 +81,13 @@ export default function Home() {
   const [outcome, setOutcome] =
     useState<"WIN" | "LOSS" | null>(null);
 
+  /*
+    NEW:
+    Betting countdown starts at 15 seconds.
+  */
+  const [bettingTimeLeft, setBettingTimeLeft] =
+    useState(15);
+
   const [history, setHistory] = useState<
     {
       result: RouletteResult;
@@ -101,8 +108,7 @@ export default function Home() {
     wagerAmount > balance;
 
   /*
-    Load current Zcash testnet information
-    when the page opens.
+    LOAD CURRENT ZCASH TESTNET STATUS
   */
   useEffect(() => {
     async function loadZcashStatus() {
@@ -130,17 +136,40 @@ export default function Home() {
   }, []);
 
   /*
-    While a round is waiting for its locked block,
-    check CipherScan every 5 seconds.
+    NEW:
+    15 SECOND BETTING COUNTDOWN
 
-    Once the block exists:
-    block hash
-        ↓
-    verifyBlockHash()
-        ↓
-    roulette pocket
-        ↓
-    wheel animation
+    This is visual only for now.
+
+    It does NOT automatically spin or
+    lock a block when it reaches zero.
+  */
+  useEffect(() => {
+    if (waitingForBlock || spinning) {
+      return;
+    }
+
+    if (bettingTimeLeft <= 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setBettingTimeLeft((current) =>
+        Math.max(0, current - 1)
+      );
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    bettingTimeLeft,
+    waitingForBlock,
+    spinning,
+  ]);
+
+  /*
+    WATCH THE LOCKED FUTURE BLOCK
   */
   useEffect(() => {
     if (
@@ -171,28 +200,30 @@ export default function Home() {
 
         resolvingBlockRef.current = true;
 
-        const pocket = verifyBlockHash(data.hash);
+        /*
+          ZCASH HASH → VERIFIED POCKET
+        */
+        const pocket =
+          verifyBlockHash(data.hash);
 
         if (pocket === null) {
           resolvingBlockRef.current = false;
           return;
         }
 
-        /*
-          Save the public blockchain proof
-          for this round.
-        */
         setRoundBlockHash(data.hash);
         setRoundVerifiedPocket(pocket);
+
         setWaitingForBlock(false);
 
         /*
-          Find where the derived pocket
-          sits on the American roulette wheel.
+          FIND VERIFIED POCKET
+          ON THE WHEEL
         */
-        const resultIndex = wheelNumbers.findIndex(
-          (number) => number === pocket
-        );
+        const resultIndex =
+          wheelNumbers.findIndex(
+            (number) => number === pocket
+          );
 
         if (resultIndex === -1) {
           resolvingBlockRef.current = false;
@@ -200,8 +231,7 @@ export default function Home() {
         }
 
         /*
-          Now we know the blockchain-derived
-          result, so start the wheel animation.
+          START VISUAL SPIN
         */
         setSpinning(true);
         setResult(null);
@@ -211,20 +241,25 @@ export default function Home() {
           360 / wheelNumbers.length;
 
         setRotation((current) => {
-          const currentPosition = current % 360;
+          const currentPosition =
+            current % 360;
 
           const targetPosition =
             -(resultIndex * segmentAngle);
 
           const adjustment =
-            targetPosition - currentPosition;
+            targetPosition -
+            currentPosition;
 
-          return current + 1440 + adjustment;
+          return (
+            current +
+            1440 +
+            adjustment
+          );
         });
 
         /*
-          Wait for the 3-second wheel animation
-          to finish before showing the result.
+          WAIT FOR WHEEL ANIMATION
         */
         setTimeout(() => {
           setSpinning(false);
@@ -236,15 +271,23 @@ export default function Home() {
           let won = false;
 
           if (roundBet === "RED") {
-            won = resultColor === "RED";
-          } else if (roundBet === "BLACK") {
-            won = resultColor === "BLACK";
-          } else if (roundBet === "ODD") {
+            won =
+              resultColor === "RED";
+          } else if (
+            roundBet === "BLACK"
+          ) {
+            won =
+              resultColor === "BLACK";
+          } else if (
+            roundBet === "ODD"
+          ) {
             won =
               typeof pocket === "number" &&
               pocket !== 0 &&
               pocket % 2 !== 0;
-          } else if (roundBet === "EVEN") {
+          } else if (
+            roundBet === "EVEN"
+          ) {
             won =
               typeof pocket === "number" &&
               pocket !== 0 &&
@@ -257,7 +300,8 @@ export default function Home() {
             if (roundWager !== null) {
               setBalance(
                 (current) =>
-                  current + roundWager * 2
+                  current +
+                  roundWager * 2
               );
             }
           } else {
@@ -281,27 +325,28 @@ export default function Home() {
             ]);
           }
 
-          resolvingBlockRef.current = false;
+          resolvingBlockRef.current =
+            false;
         }, 3000);
       } catch {
         /*
-          If CipherScan temporarily fails,
-          don't end the round.
+          If the request fails,
+          keep waiting.
 
-          The next 5-second check will try again.
+          The next check will retry.
         */
       }
     }
 
     checkTargetBlock();
 
-    const interval = setInterval(
+    const interval = window.setInterval(
       checkTargetBlock,
       5000
     );
 
     return () => {
-      clearInterval(interval);
+      window.clearInterval(interval);
     };
   }, [
     waitingForBlock,
@@ -313,10 +358,9 @@ export default function Home() {
   /*
     MAIN SPIN BUTTON
 
-    Notice:
-    There is NO Math.random() here anymore.
+    NO Math.random().
 
-    SPIN locks the next Zcash testnet block.
+    It locks the NEXT Zcash block.
   */
   async function handleSpin() {
     const wager = Number(betAmount);
@@ -333,11 +377,8 @@ export default function Home() {
 
     try {
       /*
-        Refresh the blockchain height at
-        the exact moment SPIN is clicked.
-
-        This is better than trusting the
-        block height from when the page loaded.
+        Get the latest block at the
+        moment SPIN is clicked.
       */
       const response = await fetch(
         "/api/zcash-status",
@@ -357,10 +398,14 @@ export default function Home() {
         return;
       }
 
-      const currentBlock = data.height;
-      const nextBlock = currentBlock + 1;
+      const currentBlock =
+        data.height;
+
+      const nextBlock =
+        currentBlock + 1;
 
       setBlockHeight(currentBlock);
+
       setBestBlockHash(
         data.bestBlockHash ?? null
       );
@@ -368,23 +413,26 @@ export default function Home() {
       setTestnetConnected(true);
 
       /*
-        Freeze the player's demo prediction
-        for this round.
+        FREEZE THIS ROUND'S
+        TEST PREDICTION
       */
       setRoundBet(selectedBet);
       setRoundWager(wager);
 
       /*
-        Deduct TEST ZEC wager.
+        UPDATE TEST BALANCE
       */
       setBalance(
-        (current) => current - wager
+        (current) =>
+          current - wager
       );
 
       /*
-        Lock the FUTURE block.
+        LOCK FUTURE BLOCK
       */
-      setTargetBlockHeight(nextBlock);
+      setTargetBlockHeight(
+        nextBlock
+      );
 
       setRoundBlockHash(null);
       setRoundVerifiedPocket(null);
@@ -392,7 +440,8 @@ export default function Home() {
       setResult(null);
       setOutcome(null);
 
-      resolvingBlockRef.current = false;
+      resolvingBlockRef.current =
+        false;
 
       setWaitingForBlock(true);
       setLockingRound(false);
@@ -404,6 +453,9 @@ export default function Home() {
 
   return (
     <main className="game">
+
+      {/* HEADER */}
+
       <header className="topbar">
         <div>
           <h1 className="brand">
@@ -417,7 +469,9 @@ export default function Home() {
 
         <div className="topbar-info">
           <div className="balance">
-            <span>Balance</span>
+            <span>
+              Balance
+            </span>
 
             <strong>
               {balance} TEST ZEC
@@ -433,11 +487,14 @@ export default function Home() {
             </span>
 
             <strong>
-              BLOCK: {blockHeight ?? "—"}
+              BLOCK:{" "}
+              {blockHeight ?? "—"}
             </strong>
           </div>
         </div>
       </header>
+
+      {/* ROULETTE WHEEL */}
 
       <section className="roulette-section">
         <RouletteWheel
@@ -458,12 +515,18 @@ export default function Home() {
           </p>
         ) : (
           <div className="spin-result">
-            <span>RESULT</span>
+            <span>
+              RESULT
+            </span>
 
-            <strong>{result}</strong>
+            <strong>
+              {result}
+            </strong>
 
             <em>
-              {getResultColor(result)}
+              {getResultColor(
+                result
+              )}
             </em>
 
             {outcome !== null && (
@@ -474,6 +537,8 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* BLOCKCHAIN VERIFICATION */}
 
       <section className="verification-panel">
         <div className="verification-header">
@@ -516,7 +581,9 @@ export default function Home() {
         </div>
 
         <div className="verification-row">
-          <span>Locked Block</span>
+          <span>
+            Locked Block
+          </span>
 
           <strong>
             {targetBlockHeight ?? "—"}
@@ -524,7 +591,9 @@ export default function Home() {
         </div>
 
         <div className="verification-row">
-          <span>Round Hash</span>
+          <span>
+            Round Hash
+          </span>
 
           <code>
             {roundBlockHash
@@ -544,14 +613,35 @@ export default function Home() {
           </span>
 
           <strong>
-            {roundVerifiedPocket ?? "—"}
+            {roundVerifiedPocket ??
+              "—"}
           </strong>
         </div>
       </section>
 
+      {/* BET PANEL */}
+
       <section className="bet-panel">
+
+        {/* NEW BETTING TIMER */}
+
+        <div className="betting-timer">
+          <span>
+            BETTING CLOSES IN
+          </span>
+
+          <strong>
+            00:
+            {String(
+              bettingTimeLeft
+            ).padStart(2, "0")}
+          </strong>
+        </div>
+
         <div className="bet-amount">
-          <span>Bet amount</span>
+          <span>
+            Bet amount
+          </span>
 
           <div className="amount-control">
             <button
@@ -592,7 +682,9 @@ export default function Home() {
               }
             />
 
-            <span>TEST ZEC</span>
+            <span>
+              TEST ZEC
+            </span>
 
             <button
               onClick={() =>
@@ -615,6 +707,8 @@ export default function Home() {
           </div>
         </div>
 
+        {/* PREDICTION */}
+
         <div className="prediction">
           <div className="prediction-header">
             <span>
@@ -623,6 +717,7 @@ export default function Home() {
           </div>
 
           <div className="simple-bet-options">
+
             <button
               className={
                 selectedBet === "RED"
@@ -630,7 +725,9 @@ export default function Home() {
                   : ""
               }
               onClick={() =>
-                setSelectedBet("RED")
+                setSelectedBet(
+                  "RED"
+                )
               }
               disabled={
                 spinning ||
@@ -642,12 +739,15 @@ export default function Home() {
 
             <button
               className={
-                selectedBet === "BLACK"
+                selectedBet ===
+                "BLACK"
                   ? "selected"
                   : ""
               }
               onClick={() =>
-                setSelectedBet("BLACK")
+                setSelectedBet(
+                  "BLACK"
+                )
               }
               disabled={
                 spinning ||
@@ -664,7 +764,9 @@ export default function Home() {
                   : ""
               }
               onClick={() =>
-                setSelectedBet("ODD")
+                setSelectedBet(
+                  "ODD"
+                )
               }
               disabled={
                 spinning ||
@@ -676,12 +778,15 @@ export default function Home() {
 
             <button
               className={
-                selectedBet === "EVEN"
+                selectedBet ===
+                "EVEN"
                   ? "selected"
                   : ""
               }
               onClick={() =>
-                setSelectedBet("EVEN")
+                setSelectedBet(
+                  "EVEN"
+                )
               }
               disabled={
                 spinning ||
@@ -690,8 +795,11 @@ export default function Home() {
             >
               EVEN
             </button>
+
           </div>
         </div>
+
+        {/* MAIN SPIN BUTTON */}
 
         <button
           className="spin-button"
@@ -715,8 +823,12 @@ export default function Home() {
         </button>
       </section>
 
+      {/* HISTORY */}
+
       <section className="history">
-        <h2>Recent Spins</h2>
+        <h2>
+          Recent Spins
+        </h2>
 
         {history.length === 0 ? (
           <div className="history-empty">
@@ -724,6 +836,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="history-list">
+
             {history.map(
               (round, index) => (
                 <div
@@ -740,8 +853,10 @@ export default function Home() {
 
                   <div className="history-details">
                     <span>
-                      BET: {round.bet} •{" "}
-                      {round.amount} TEST ZEC
+                      BET:{" "}
+                      {round.bet} •{" "}
+                      {round.amount}{" "}
+                      TEST ZEC
                     </span>
 
                     <p>
@@ -768,9 +883,11 @@ export default function Home() {
                 </div>
               )
             )}
+
           </div>
         )}
       </section>
+
     </main>
   );
 }
