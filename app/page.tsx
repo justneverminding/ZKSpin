@@ -38,13 +38,21 @@ type SourceState =
 
 type HistoryEntry = {
   result: RouletteResult;
+  resultColor: "RED" | "BLACK" | "GREEN";
+
   bet: BetType;
   amount: number;
+
   outcome: "WIN" | "LOSS";
+
+  blockHeight: number | null;
+  blockHash: string | null;
+
+  timestamp: number;
 };
 
 type StoredState = {
-  version: 2;
+  version: 3;
 
   roundPhase: RoundPhase;
 
@@ -87,8 +95,10 @@ const CONFIRMATIONS_REQUIRED = 1;
 
 const POLL_INTERVAL_MS = 5000;
 
+const MAX_HISTORY_ITEMS = 10;
+
 const STORAGE_KEY =
-  "zkspin-demo-state-v2";
+  "zkspin-demo-state-v3";
 
 const wheelNumbers: RouletteResult[] = [
   0,
@@ -154,7 +164,7 @@ const redNumbers = new Set([
 
 function getResultColor(
   result: RouletteResult
-) {
+): "RED" | "BLACK" | "GREEN" {
   if (
     result === 0 ||
     result === "00"
@@ -215,6 +225,18 @@ function formatTime(seconds: number) {
   )}:${String(
     remainingSeconds
   ).padStart(2, "0")}`;
+}
+
+function formatHistoryTime(
+  timestamp: number
+) {
+  return new Date(
+    timestamp
+  ).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 export default function Home() {
@@ -411,25 +433,17 @@ export default function Home() {
         Date.now() +
         BETTING_SECONDS * 1000;
 
-      setRoundPhase(
-        "BETTING"
-      );
+      setRoundPhase("BETTING");
 
-      setSourceState(
-        "READY"
-      );
+      setSourceState("READY");
 
-      setBettingEndsAt(
-        deadline
-      );
+      setBettingEndsAt(deadline);
 
       setBettingTimeLeft(
         BETTING_SECONDS
       );
 
-      setWaitingStartedAt(
-        null
-      );
+      setWaitingStartedAt(null);
 
       setWaitingSeconds(0);
 
@@ -441,17 +455,11 @@ export default function Home() {
 
       setRoundWager(null);
 
-      setTargetBlockHeight(
-        null
-      );
+      setTargetBlockHeight(null);
 
-      setRoundBlockHash(
-        null
-      );
+      setRoundBlockHash(null);
 
-      setRoundVerifiedPocket(
-        null
-      );
+      setRoundVerifiedPocket(null);
 
       setResult(null);
 
@@ -496,12 +504,13 @@ export default function Home() {
           raw
         ) as Partial<StoredState>;
 
-      const now =
-        Date.now();
+      const now = Date.now();
 
-      if (
-        saved.version !== 2
-      ) {
+      if (saved.version !== 3) {
+        window.localStorage.removeItem(
+          STORAGE_KEY
+        );
+
         startNewRound();
         setHydrated(true);
         return;
@@ -531,7 +540,10 @@ export default function Home() {
         )
       ) {
         setHistory(
-          saved.history
+          saved.history.slice(
+            0,
+            MAX_HISTORY_ITEMS
+          )
         );
       }
 
@@ -647,9 +659,7 @@ export default function Home() {
           )
         );
 
-        setBettingEndsAt(
-          null
-        );
+        setBettingEndsAt(null);
 
         if (
           saved.roundBlockHash
@@ -685,9 +695,7 @@ export default function Home() {
         saved.resultEndsAt >
           now
       ) {
-        setRoundPhase(
-          "RESULT"
-        );
+        setRoundPhase("RESULT");
 
         setSourceState(
           "VERIFIED"
@@ -697,9 +705,7 @@ export default function Home() {
           saved.resultEndsAt
         );
 
-        setBettingEndsAt(
-          null
-        );
+        setBettingEndsAt(null);
 
         setHydrated(true);
         return;
@@ -726,13 +732,9 @@ export default function Home() {
             )
           );
 
-        setRoundPhase(
-          "BETTING"
-        );
+        setRoundPhase("BETTING");
 
-        setSourceState(
-          "READY"
-        );
+        setSourceState("READY");
 
         setBettingEndsAt(
           saved.bettingEndsAt
@@ -763,60 +765,57 @@ export default function Home() {
       return;
     }
 
-    const state: StoredState =
-      {
-        version: 2,
+    const state: StoredState = {
+      version: 3,
 
-        roundPhase,
+      roundPhase,
 
-        betAmount,
+      betAmount,
 
-        balance,
+      balance,
 
-        targetBlockHeight,
+      targetBlockHeight,
 
-        roundBlockHash,
+      roundBlockHash,
 
-        roundVerifiedPocket,
+      roundVerifiedPocket,
 
-        roundBet,
+      roundBet,
 
-        roundWager,
+      roundWager,
 
-        selectedBet,
+      selectedBet,
 
-        result,
+      result,
 
-        outcome,
+      outcome,
 
-        history,
+      history,
 
-        bettingEndsAt,
+      bettingEndsAt,
 
-        waitingStartedAt,
+      waitingStartedAt,
 
-        resultEndsAt,
+      resultEndsAt,
 
-        roundSettled,
+      roundSettled,
 
-        confirmationDepth,
+      confirmationDepth,
 
-        sourceTipHeight,
+      sourceTipHeight,
 
-        pollAttempts,
+      pollAttempts,
 
-        sourceErrors,
+      sourceErrors,
 
-        reorgCount,
+      reorgCount,
 
-        blockFoundAt,
-      };
+      blockFoundAt,
+    };
 
     window.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(
-        state
-      )
+      JSON.stringify(state)
     );
   }, [
     hydrated,
@@ -851,8 +850,7 @@ export default function Home() {
           await fetch(
             "/api/zcash-status",
             {
-              cache:
-                "no-store",
+              cache: "no-store",
             }
           );
 
@@ -872,16 +870,14 @@ export default function Home() {
         );
 
         setTestnetConnected(
-          Boolean(
-            data.connected
-          )
+          Boolean(data.connected)
         );
       } catch {
         setBlockHeight(null);
+
         setBestBlockHash(null);
-        setTestnetConnected(
-          false
-        );
+
+        setTestnetConnected(false);
       }
     }
 
@@ -891,10 +887,8 @@ export default function Home() {
   useEffect(() => {
     if (
       !hydrated ||
-      roundPhase !==
-        "BETTING" ||
-      bettingEndsAt ===
-        null
+      roundPhase !== "BETTING" ||
+      bettingEndsAt === null
     ) {
       return;
     }
@@ -925,9 +919,7 @@ export default function Home() {
       );
 
     return () => {
-      window.clearInterval(
-        timer
-      );
+      window.clearInterval(timer);
     };
   }, [
     hydrated,
@@ -938,20 +930,15 @@ export default function Home() {
   useEffect(() => {
     if (
       !hydrated ||
-      roundPhase !==
-        "BETTING" ||
+      roundPhase !== "BETTING" ||
       bettingTimeLeft !== 0
     ) {
       return;
     }
 
-    setRoundPhase(
-      "MISSED"
-    );
+    setRoundPhase("MISSED");
 
-    setBettingEndsAt(
-      null
-    );
+    setBettingEndsAt(null);
 
     const timer =
       window.setTimeout(
@@ -960,9 +947,7 @@ export default function Home() {
       );
 
     return () => {
-      window.clearTimeout(
-        timer
-      );
+      window.clearTimeout(timer);
     };
   }, [
     hydrated,
@@ -973,17 +958,14 @@ export default function Home() {
 
   useEffect(() => {
     const active =
-      roundPhase ===
-        "WAITING" ||
-      roundPhase ===
-        "CONFIRMING" ||
+      roundPhase === "WAITING" ||
+      roundPhase === "CONFIRMING" ||
       roundPhase ===
         "REORG_DETECTED";
 
     if (
       !active ||
-      waitingStartedAt ===
-        null
+      waitingStartedAt === null
     ) {
       return;
     }
@@ -1011,9 +993,7 @@ export default function Home() {
       );
 
     return () => {
-      window.clearInterval(
-        timer
-      );
+      window.clearInterval(timer);
     };
   }, [
     roundPhase,
@@ -1022,10 +1002,8 @@ export default function Home() {
 
   useEffect(() => {
     if (
-      roundPhase !==
-        "RESULT" ||
-      resultEndsAt ===
-        null
+      roundPhase !== "RESULT" ||
+      resultEndsAt === null
     ) {
       return;
     }
@@ -1046,9 +1024,7 @@ export default function Home() {
       );
 
     return () => {
-      window.clearTimeout(
-        timer
-      );
+      window.clearTimeout(timer);
     };
   }, [
     roundPhase,
@@ -1056,23 +1032,16 @@ export default function Home() {
     startNewRound,
   ]);
 
-  /*
-    BLOCK CONFIRMATION ENGINE
-  */
-
   useEffect(() => {
     const active =
-      roundPhase ===
-        "WAITING" ||
-      roundPhase ===
-        "CONFIRMING" ||
+      roundPhase === "WAITING" ||
+      roundPhase === "CONFIRMING" ||
       roundPhase ===
         "REORG_DETECTED";
 
     if (
       !active ||
-      targetBlockHeight ===
-        null
+      targetBlockHeight === null
     ) {
       return;
     }
@@ -1098,8 +1067,7 @@ export default function Home() {
           await fetch(
             `/api/zcash-block/${targetBlockHeight}`,
             {
-              cache:
-                "no-store",
+              cache: "no-store",
             }
           );
 
@@ -1116,9 +1084,7 @@ export default function Home() {
               current + 1
           );
 
-          setTestnetConnected(
-            false
-          );
+          setTestnetConnected(false);
 
           setSourceState(
             "SOURCE_UNAVAILABLE"
@@ -1127,9 +1093,7 @@ export default function Home() {
           return;
         }
 
-        setTestnetConnected(
-          true
-        );
+        setTestnetConnected(true);
 
         if (
           typeof data.tipHeight ===
@@ -1145,20 +1109,15 @@ export default function Home() {
         }
 
         if (
-          data.status ===
-          "NOT_MINED"
+          data.status === "NOT_MINED"
         ) {
-          setRoundPhase(
-            "WAITING"
-          );
+          setRoundPhase("WAITING");
 
           setSourceState(
             "WAITING_FOR_BLOCK"
           );
 
-          setConfirmationDepth(
-            0
-          );
+          setConfirmationDepth(0);
 
           return;
         }
@@ -1167,9 +1126,7 @@ export default function Home() {
           data.status ===
           "DATA_SOURCE_LAG"
         ) {
-          setRoundPhase(
-            "WAITING"
-          );
+          setRoundPhase("WAITING");
 
           setSourceState(
             "SOURCE_LAG"
@@ -1179,8 +1136,7 @@ export default function Home() {
         }
 
         if (
-          data.status !==
-            "FOUND" ||
+          data.status !== "FOUND" ||
           !data.found ||
           !data.hash
         ) {
@@ -1193,8 +1149,7 @@ export default function Home() {
           ).toLowerCase();
 
         if (
-          roundBlockHash ===
-            null
+          roundBlockHash === null
         ) {
           setRoundBlockHash(
             observedHash
@@ -1206,8 +1161,7 @@ export default function Home() {
         }
 
         if (
-          roundBlockHash !==
-            null &&
+          roundBlockHash !== null &&
           observedHash !==
             roundBlockHash
         ) {
@@ -1253,9 +1207,7 @@ export default function Home() {
             ? data.confirmationDepth
             : 1;
 
-        setConfirmationDepth(
-          depth
-        );
+        setConfirmationDepth(depth);
 
         if (
           depth <
@@ -1284,11 +1236,10 @@ export default function Home() {
             observedHash
           );
 
-        if (
-          pocket === null
-        ) {
+        if (pocket === null) {
           resolvingBlockRef.current =
             false;
+
           return;
         }
 
@@ -1306,19 +1257,17 @@ export default function Home() {
               number === pocket
           );
 
-        if (
-          resultIndex === -1
-        ) {
+        if (resultIndex === -1) {
           resolvingBlockRef.current =
             false;
+
           return;
         }
 
-        setRoundPhase(
-          "SPINNING"
-        );
+        setRoundPhase("SPINNING");
 
         setResult(null);
+
         setOutcome(null);
 
         const segmentAngle =
@@ -1351,13 +1300,12 @@ export default function Home() {
         window.setTimeout(
           () => {
             if (
-              roundBet ===
-                null ||
-              roundWager ===
-                null
+              roundBet === null ||
+              roundWager === null
             ) {
               resolvingBlockRef.current =
                 false;
+
               return;
             }
 
@@ -1367,9 +1315,10 @@ export default function Home() {
                 pocket
               );
 
-            setResult(
-              pocket
-            );
+            const pocketColor =
+              getResultColor(pocket);
+
+            setResult(pocket);
 
             setOutcome(
               won
@@ -1377,56 +1326,63 @@ export default function Home() {
                 : "LOSS"
             );
 
-            if (
-              !roundSettled
-            ) {
+            if (!roundSettled) {
               if (won) {
                 setBalance(
                   (current) =>
                     current +
-                    roundWager *
-                      2
+                    roundWager * 2
                 );
               }
 
+              const historyEntry: HistoryEntry =
+                {
+                  result: pocket,
+
+                  resultColor:
+                    pocketColor,
+
+                  bet: roundBet,
+
+                  amount:
+                    roundWager,
+
+                  outcome:
+                    won
+                      ? "WIN"
+                      : "LOSS",
+
+                  blockHeight:
+                    targetBlockHeight,
+
+                  blockHash:
+                    observedHash,
+
+                  timestamp:
+                    Date.now(),
+                };
+
               setHistory(
-                (current) => [
-                  {
-                    result:
-                      pocket,
-
-                    bet:
-                      roundBet,
-
-                    amount:
-                      roundWager,
-
-                    outcome:
-                      won
-                        ? "WIN"
-                        : "LOSS",
-                  },
-
-                  ...current,
-                ]
+                (current) =>
+                  [
+                    historyEntry,
+                    ...current,
+                  ].slice(
+                    0,
+                    MAX_HISTORY_ITEMS
+                  )
               );
 
-              setRoundSettled(
-                true
-              );
+              setRoundSettled(true);
             }
 
             const endsAt =
               Date.now() +
               3000;
 
-            setResultEndsAt(
-              endsAt
-            );
+            setResultEndsAt(endsAt);
 
-            setRoundPhase(
-              "RESULT"
-            );
+            setRoundPhase("RESULT");
 
             setSourceState(
               "VERIFIED"
@@ -1443,9 +1399,7 @@ export default function Home() {
             current + 1
         );
 
-        setTestnetConnected(
-          false
-        );
+        setTestnetConnected(false);
 
         setSourceState(
           "SOURCE_UNAVAILABLE"
@@ -1465,9 +1419,7 @@ export default function Home() {
       );
 
     return () => {
-      window.clearInterval(
-        interval
-      );
+      window.clearInterval(interval);
     };
   }, [
     roundPhase,
@@ -1493,26 +1445,21 @@ export default function Home() {
     }
 
     if (
-      !Number.isFinite(
-        wager
-      ) ||
+      !Number.isFinite(wager) ||
       wager < 1 ||
       wager > balance
     ) {
       return;
     }
 
-    setRoundPhase(
-      "LOCKING"
-    );
+    setRoundPhase("LOCKING");
 
     try {
       const response =
         await fetch(
           "/api/zcash-status",
           {
-            cache:
-              "no-store",
+            cache: "no-store",
           }
         );
 
@@ -1524,13 +1471,9 @@ export default function Home() {
         typeof data.height !==
           "number"
       ) {
-        setTestnetConnected(
-          false
-        );
+        setTestnetConnected(false);
 
-        setRoundPhase(
-          "BETTING"
-        );
+        setRoundPhase("BETTING");
 
         return;
       }
@@ -1550,30 +1493,22 @@ export default function Home() {
           null
       );
 
-      setTestnetConnected(
-        true
-      );
+      setTestnetConnected(true);
 
       setRoundBet(
         selectedBet
       );
 
-      setRoundWager(
-        wager
-      );
+      setRoundWager(wager);
 
       setBalance(
         (current) =>
           current - wager
       );
 
-      setBettingEndsAt(
-        null
-      );
+      setBettingEndsAt(null);
 
-      setBettingTimeLeft(
-        0
-      );
+      setBettingTimeLeft(0);
 
       const waitStart =
         Date.now();
@@ -1582,25 +1517,17 @@ export default function Home() {
         waitStart
       );
 
-      setWaitingSeconds(
-        0
-      );
+      setWaitingSeconds(0);
 
       setTargetBlockHeight(
         nextBlock
       );
 
-      setRoundBlockHash(
-        null
-      );
+      setRoundBlockHash(null);
 
-      setRoundVerifiedPocket(
-        null
-      );
+      setRoundVerifiedPocket(null);
 
-      setConfirmationDepth(
-        0
-      );
+      setConfirmationDepth(0);
 
       setSourceTipHeight(
         currentBlock
@@ -1618,13 +1545,9 @@ export default function Home() {
 
       setOutcome(null);
 
-      setRoundSettled(
-        false
-      );
+      setRoundSettled(false);
 
-      setResultEndsAt(
-        null
-      );
+      setResultEndsAt(null);
 
       resolvingBlockRef.current =
         false;
@@ -1636,17 +1559,11 @@ export default function Home() {
         "WAITING_FOR_BLOCK"
       );
 
-      setRoundPhase(
-        "WAITING"
-      );
+      setRoundPhase("WAITING");
     } catch {
-      setTestnetConnected(
-        false
-      );
+      setTestnetConnected(false);
 
-      setRoundPhase(
-        "BETTING"
-      );
+      setRoundPhase("BETTING");
     }
   }
 
@@ -1684,8 +1601,7 @@ export default function Home() {
 
             <strong>
               BLOCK:{" "}
-              {blockHeight ??
-                "—"}
+              {blockHeight ?? "—"}
             </strong>
           </div>
         </div>
@@ -1707,8 +1623,7 @@ export default function Home() {
 
             <p className="wheel-label">
               LOCKED BLOCK{" "}
-              {targetBlockHeight ??
-                "—"}
+              {targetBlockHeight ?? "—"}
             </p>
           </div>
         ) : sourceState ===
@@ -1729,8 +1644,7 @@ export default function Home() {
             <p className="wheel-label">
               WAITING FOR ZCASH
               BLOCK{" "}
-              {targetBlockHeight ??
-                "—"}
+              {targetBlockHeight ?? "—"}
             </p>
 
             <p className="wheel-label">
@@ -1747,8 +1661,7 @@ export default function Home() {
           <div>
             <p className="wheel-label">
               VERIFYING BLOCK{" "}
-              {targetBlockHeight ??
-                "—"}
+              {targetBlockHeight ?? "—"}
             </p>
 
             <p className="wheel-label">
@@ -1757,10 +1670,7 @@ export default function Home() {
                 confirmationDepth,
                 CONFIRMATIONS_REQUIRED
               )}
-              /
-              {
-                CONFIRMATIONS_REQUIRED
-              }
+              /{CONFIRMATIONS_REQUIRED}
             </p>
           </div>
         ) : roundPhase ===
@@ -1782,13 +1692,10 @@ export default function Home() {
             </strong>
 
             <em>
-              {getResultColor(
-                result
-              )}
+              {getResultColor(result)}
             </em>
 
-            {outcome !==
-              null && (
+            {outcome !== null && (
               <p className="round-outcome">
                 {outcome}
               </p>
@@ -1846,8 +1753,7 @@ export default function Home() {
           </span>
 
           <strong>
-            {targetBlockHeight ??
-              "—"}
+            {targetBlockHeight ?? "—"}
           </strong>
         </div>
 
@@ -1890,8 +1796,7 @@ export default function Home() {
           </span>
 
           <strong>
-            {roundVerifiedPocket ??
-              "—"}
+            {roundVerifiedPocket ?? "—"}
           </strong>
         </div>
 
@@ -1975,16 +1880,13 @@ export default function Home() {
                       Math.max(
                         1,
                         Number(
-                          current ||
-                            0
+                          current || 0
                         ) - 1
                       )
                     )
                 )
               }
-              disabled={
-                !bettingOpen
-              }
+              disabled={!bettingOpen}
             >
               -
             </button>
@@ -1994,17 +1896,12 @@ export default function Home() {
               min="1"
               step="1"
               value={betAmount}
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setBetAmount(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
-              disabled={
-                !bettingOpen
-              }
+              disabled={!bettingOpen}
             />
 
             <span>
@@ -2017,15 +1914,12 @@ export default function Home() {
                   (current) =>
                     String(
                       Number(
-                        current ||
-                          0
+                        current || 0
                       ) + 1
                     )
                 )
               }
-              disabled={
-                !bettingOpen
-              }
+              disabled={!bettingOpen}
             >
               +
             </button>
@@ -2040,81 +1934,29 @@ export default function Home() {
           </div>
 
           <div className="simple-bet-options">
-            <button
-              className={
-                selectedBet ===
-                  "RED"
-                  ? "selected"
-                  : ""
-              }
-              onClick={() =>
-                setSelectedBet(
-                  "RED"
-                )
-              }
-              disabled={
-                !bettingOpen
-              }
-            >
-              RED
-            </button>
-
-            <button
-              className={
-                selectedBet ===
-                  "BLACK"
-                  ? "selected"
-                  : ""
-              }
-              onClick={() =>
-                setSelectedBet(
-                  "BLACK"
-                )
-              }
-              disabled={
-                !bettingOpen
-              }
-            >
-              BLACK
-            </button>
-
-            <button
-              className={
-                selectedBet ===
-                  "ODD"
-                  ? "selected"
-                  : ""
-              }
-              onClick={() =>
-                setSelectedBet(
-                  "ODD"
-                )
-              }
-              disabled={
-                !bettingOpen
-              }
-            >
-              ODD
-            </button>
-
-            <button
-              className={
-                selectedBet ===
-                  "EVEN"
-                  ? "selected"
-                  : ""
-              }
-              onClick={() =>
-                setSelectedBet(
-                  "EVEN"
-                )
-              }
-              disabled={
-                !bettingOpen
-              }
-            >
-              EVEN
-            </button>
+            {(
+              [
+                "RED",
+                "BLACK",
+                "ODD",
+                "EVEN",
+              ] as BetType[]
+            ).map((bet) => (
+              <button
+                key={bet}
+                className={
+                  selectedBet === bet
+                    ? "selected"
+                    : ""
+                }
+                onClick={() =>
+                  setSelectedBet(bet)
+                }
+                disabled={!bettingOpen}
+              >
+                {bet}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -2123,8 +1965,7 @@ export default function Home() {
           onClick={handleSpin}
           disabled={
             !bettingOpen ||
-            selectedBet ===
-              null ||
+            selectedBet === null ||
             invalidBet ||
             !testnetConnected
           }
@@ -2163,48 +2004,71 @@ export default function Home() {
       </section>
 
       <section className="history">
-        <h2>
-          Recent Spins
-        </h2>
+        <div className="history-header">
+          <h2>
+            Recent Spins
+          </h2>
 
-        {history.length ===
-        0 ? (
+          <span>
+            LAST {MAX_HISTORY_ITEMS}
+          </span>
+        </div>
+
+        {history.length === 0 ? (
           <div className="history-empty">
-            No spins yet.
+            No verified spins yet.
           </div>
         ) : (
           <div className="history-list">
             {history.map(
-              (
-                round,
-                index
-              ) => (
+              (round, index) => (
                 <div
                   className="history-item"
-                  key={`${round.result}-${index}`}
+                  key={`${round.timestamp}-${index}`}
                 >
                   <div
-                    className={`history-number ${getResultColor(
-                      round.result
-                    ).toLowerCase()}`}
+                    className={`history-number ${round.resultColor.toLowerCase()}`}
                   >
                     {round.result}
                   </div>
 
                   <div className="history-details">
-                    <span>
-                      BET:{" "}
-                      {round.bet} •{" "}
-                      {round.amount}{" "}
-                      TEST ZEC
-                    </span>
+                    <div className="history-top-row">
+                      <span>
+                        BET: {round.bet}
+                      </span>
+
+                      <span>
+                        {formatHistoryTime(
+                          round.timestamp
+                        )}
+                      </span>
+                    </div>
+
+                    <p>
+                      {round.amount} TEST ZEC
+                    </p>
 
                     <p>
                       RESULT:{" "}
-                      {getResultColor(
-                        round.result
-                      )}
+                      {round.resultColor}
                     </p>
+
+                    <p className="history-block">
+                      BLOCK #
+                      {round.blockHeight ??
+                        "—"}
+                    </p>
+
+                    {round.blockHash && (
+                      <code className="history-hash">
+                        {round.blockHash.slice(
+                          0,
+                          18
+                        )}
+                        ...
+                      </code>
+                    )}
 
                     <strong
                       className={
