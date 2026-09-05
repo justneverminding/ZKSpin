@@ -39,6 +39,9 @@ export default function Home() {
   function handleSpin() {
   if (spinning) return;
   if (selectedBet === null) return;
+  if (betAmount > balance) return;
+
+  setBalance((current) => current - betAmount);
 
   setSpinning(true);
   setResult(null);
@@ -196,7 +199,11 @@ if (won) {
    <button
   className="spin-button"
   onClick={handleSpin}
-  disabled={spinning || selectedBet === null}
+disabled={
+  spinning ||
+  selectedBet === null ||
+  betAmount > balance
+}
 >
   {spinning ? "SPINNING..." : "SPIN"}
 </button>
