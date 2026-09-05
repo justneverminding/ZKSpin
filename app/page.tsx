@@ -113,7 +113,13 @@ export default function Home() {
   </div>
 
   <div className="simple-bet-options">
-    <button>RED</button>
+    <button
+  className={selectedBet === "RED" ? "selected" : ""}
+  onClick={() => setSelectedBet("RED")}
+  disabled={spinning}
+>
+  RED
+</button>
     <button>BLACK</button>
     <button>ODD</button>
     <button>EVEN</button>
