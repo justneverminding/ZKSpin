@@ -28,6 +28,8 @@ export default function Home() {
 
  const [betAmount, setBetAmount] = useState("1");
 
+const [balance, setBalance] = useState(100);
+
 const wagerAmount = Number(betAmount);
 
 const invalidBet =
@@ -36,7 +38,6 @@ const invalidBet =
   wagerAmount < 1 ||
   wagerAmount > balance;
   
-  const [balance, setBalance] = useState(100);
   const [history, setHistory] = useState<number[]>([]);
   const [selectedNumber, setSelectedNumber] =
   useState<number | null>(null);
