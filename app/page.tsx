@@ -116,12 +116,13 @@ function lockNextBlock() {
 }
 
 function handleSpin() {
+  const wager = Number(betAmount);
 
-if (spinning) return;
-if (selectedBet === null) return;
-if (!Number.isFinite(wager)) return;
-if (wager < 1) return;
-if (wager > balance) return;
+  if (spinning) return;
+  if (selectedBet === null) return;
+  if (!Number.isFinite(wager)) return;
+  if (wager < 1) return;
+  if (wager > balance) return;
 
 setBalance((current) => current - wager);
 
