@@ -2018,7 +2018,7 @@ export default function Home() {
           </p>
         ) : (
           <p className="wheel-label">
-            WAITING FOR PREDICTION
+            PLACE YOUR PREDICTION
           </p>
         )}
       </section>
