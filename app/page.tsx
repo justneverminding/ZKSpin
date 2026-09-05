@@ -92,20 +92,30 @@ const invalidBet =
       const data = await response.json();
 
       setBlockHeight(data.height);
-setBestBlockHash(data.bestBlockHash);
-setTestnetConnected(data.connected);
-   } catch {
-  setBlockHeight(null);
-  setBestBlockHash(null);
-  setTestnetConnected(false);
-}
+      setBestBlockHash(data.bestBlockHash);
+      setTestnetConnected(data.connected);
+    } catch {
+      setBlockHeight(null);
+      setBestBlockHash(null);
+      setTestnetConnected(false);
+    }
   }
 
   loadZcashStatus();
 }, []);
 
-  function handleSpin() {
-  const wager = Number(betAmount);
+function lockNextBlock() {
+  if (blockHeight === null) return;
+
+  const nextBlock = blockHeight + 1;
+
+  setTargetBlockHeight(nextBlock);
+  setRoundBlockHash(null);
+  setRoundVerifiedPocket(null);
+  setWaitingForBlock(true);
+}
+
+function handleSpin() {
 
 if (spinning) return;
 if (selectedBet === null) return;
@@ -269,6 +279,20 @@ setHistory((current) => [
           <span>Derived Pocket</span>
           <strong>{verifiedPocket ?? "—"}</strong>
         </div>
+        
+        <button
+  type="button"
+  onClick={lockNextBlock}
+  disabled={
+    !testnetConnected ||
+    blockHeight === null ||
+    waitingForBlock
+  }
+>
+  {waitingForBlock
+    ? `WAITING FOR BLOCK ${targetBlockHeight}`
+    : "LOCK NEXT BLOCK"}
+</button>
       </section>
 
       <section className="bet-panel">
