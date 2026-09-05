@@ -1,30 +1,39 @@
 "use client";
 import { useState } from "react";
 import RouletteWheel from "../components/RouletteWheel";
-const wheelNumbers = [
-  0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
-  6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
-  24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
-  29, 7, 28, 12, 35, 3, 26
+type RouletteResult = number | "00";
+
+const wheelNumbers: RouletteResult[] = [
+  0, 28, 9, 26, 30, 11, 7, 20, 32, 17,
+  5, 22, 34, 15, 3, 24, 36, 13, 1, "00",
+  27, 10, 25, 29, 12, 8, 19, 31, 18, 6,
+  21, 33, 16, 4, 23, 35, 14, 2
 ];
-const predictionNumbers = Array.from(
-  { length: 37 },
-  (_, index) => index
-);
+
 const redNumbers = new Set([
   1, 3, 5, 7, 9, 12, 14, 16, 18,
   19, 21, 23, 25, 27, 30, 32, 34, 36
 ]);
 
-function getResultColor(number: number) {
-  if (number === 0) return "GREEN";
-  if (redNumbers.has(number)) return "RED";
+function getResultColor(result: RouletteResult) {
+  if (result === 0 || result === "00") {
+    return "GREEN";
+  }
+
+  if (
+    typeof result === "number" &&
+    redNumbers.has(result)
+  ) {
+    return "RED";
+  }
+
   return "BLACK";
 }
 export default function Home() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<number | null>(null);
+ const [result, setResult] =
+  useState<RouletteResult | null>(null);
 
  const [betAmount, setBetAmount] = useState("1");
 
@@ -42,14 +51,13 @@ const invalidBet =
   
  const [history, setHistory] = useState<
   {
-    result: number;
+    result: RouletteResult;
     bet: "RED" | "BLACK" | "ODD" | "EVEN";
     amount: number;
     outcome: "WIN" | "LOSS";
   }[]
 >([]);
-  const [selectedNumber, setSelectedNumber] =
-  useState<number | null>(null);
+
     const [selectedBet, setSelectedBet] =
   useState<"RED" | "BLACK" | "ODD" | "EVEN" | null>(null);
   const [outcome, setOutcome] =
@@ -94,14 +102,23 @@ setBalance((current) => current - wager);
    
 const resultColor = getResultColor(resultNumber);
 
-const won =
-  selectedBet === resultColor ||
-  (selectedBet === "ODD" &&
+let won = false;
+
+if (selectedBet === "RED") {
+  won = resultColor === "RED";
+} else if (selectedBet === "BLACK") {
+  won = resultColor === "BLACK";
+} else if (selectedBet === "ODD") {
+  won =
+    typeof resultNumber === "number" &&
     resultNumber !== 0 &&
-    resultNumber % 2 !== 0) ||
-  (selectedBet === "EVEN" &&
+    resultNumber % 2 !== 0;
+} else if (selectedBet === "EVEN") {
+  won =
+    typeof resultNumber === "number" &&
     resultNumber !== 0 &&
-    resultNumber % 2 === 0);
+    resultNumber % 2 === 0;
+}
 
 if (won) {
   setOutcome("WIN");
