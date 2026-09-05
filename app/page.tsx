@@ -281,15 +281,21 @@ setHistory((current) => [
       {round.result}
     </div>
 
-    <div>
-      <span>
-        {round.bet} • {round.amount} TEST ZEC
-      </span>
+    <div className="history-details">
+  <span>
+    BET: {round.bet} • {round.amount} TEST ZEC
+  </span>
 
-      <p>
-        {getResultColor(round.result)} • {round.outcome}
-      </p>
-    </div>
+  <p>
+    RESULT: {getResultColor(round.result)}
+  </p>
+
+  <strong>
+    {round.outcome === "WIN"
+      ? `WIN • +${round.amount} TEST ZEC`
+      : `LOSS • -${round.amount} TEST ZEC`}
+  </strong>
+</div>
   </div>
 ))}
     </div>
