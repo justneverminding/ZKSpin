@@ -36,71 +36,143 @@ type SourceState =
   | "CONFIRMING"
   | "VERIFIED";
 
+type RoundMode =
+  | "BLOCKCHAIN"
+  | "DEMO";
+
 type HistoryEntry = {
   result: RouletteResult;
-  resultColor: "RED" | "BLACK" | "GREEN";
+
+  resultColor:
+    | "RED"
+    | "BLACK"
+    | "GREEN";
 
   bet: BetType;
+
   amount: number;
 
-  outcome: "WIN" | "LOSS";
+  outcome:
+    | "WIN"
+    | "LOSS";
 
-  blockHeight: number | null;
-  blockHash: string | null;
+  blockHeight:
+    | number
+    | null;
+
+  blockHash:
+    | string
+    | null;
 
   timestamp: number;
+
+  mode: RoundMode;
 };
 
 type StoredState = {
   version: 3;
 
-  roundPhase: RoundPhase;
+  demoMode: boolean;
+
+  roundPhase:
+    RoundPhase;
 
   betAmount: string;
+
   balance: number;
 
-  targetBlockHeight: number | null;
+  targetBlockHeight:
+    | number
+    | null;
 
-  roundBlockHash: string | null;
-  roundVerifiedPocket: RouletteResult | null;
+  roundBlockHash:
+    | string
+    | null;
 
-  roundBet: BetType | null;
-  roundWager: number | null;
+  roundVerifiedPocket:
+    | RouletteResult
+    | null;
 
-  selectedBet: BetType | null;
+  roundBet:
+    | BetType
+    | null;
 
-  result: RouletteResult | null;
-  outcome: "WIN" | "LOSS" | null;
+  roundWager:
+    | number
+    | null;
 
-  history: HistoryEntry[];
+  selectedBet:
+    | BetType
+    | null;
 
-  bettingEndsAt: number | null;
-  waitingStartedAt: number | null;
-  resultEndsAt: number | null;
+  result:
+    | RouletteResult
+    | null;
 
-  roundSettled: boolean;
+  outcome:
+    | "WIN"
+    | "LOSS"
+    | null;
 
-  confirmationDepth: number;
+  history:
+    HistoryEntry[];
 
-  sourceTipHeight: number | null;
-  pollAttempts: number;
-  sourceErrors: number;
-  reorgCount: number;
-  blockFoundAt: number | null;
+  bettingEndsAt:
+    | number
+    | null;
+
+  waitingStartedAt:
+    | number
+    | null;
+
+  resultEndsAt:
+    | number
+    | null;
+
+  roundSettled:
+    boolean;
+
+  confirmationDepth:
+    number;
+
+  sourceTipHeight:
+    | number
+    | null;
+
+  pollAttempts:
+    number;
+
+  sourceErrors:
+    number;
+
+  reorgCount:
+    number;
+
+  blockFoundAt:
+    | number
+    | null;
 };
 
-const BETTING_SECONDS = 30;
+const BETTING_SECONDS =
+  30;
 
-const CONFIRMATIONS_REQUIRED = 1;
+const CONFIRMATIONS_REQUIRED =
+  1;
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS =
+  5000;
 
-const MAX_HISTORY_ITEMS = 10;
+const MAX_HISTORY_ITEMS =
+  10;
+
+const DEMO_DELAY_MS =
+  1000;
 
 const STORAGE_KEY =
   "zkspin-demo-state-v3";
 
-const wheelNumbers: RouletteResult[] = [
+const wheelNumbers:
+  RouletteResult[] = [
   0,
   28,
   9,
@@ -141,30 +213,34 @@ const wheelNumbers: RouletteResult[] = [
   2,
 ];
 
-const redNumbers = new Set([
-  1,
-  3,
-  5,
-  7,
-  9,
-  12,
-  14,
-  16,
-  18,
-  19,
-  21,
-  23,
-  25,
-  27,
-  30,
-  32,
-  34,
-  36,
-]);
+const redNumbers =
+  new Set([
+    1,
+    3,
+    5,
+    7,
+    9,
+    12,
+    14,
+    16,
+    18,
+    19,
+    21,
+    23,
+    25,
+    27,
+    30,
+    32,
+    34,
+    36,
+  ]);
 
 function getResultColor(
   result: RouletteResult
-): "RED" | "BLACK" | "GREEN" {
+):
+  | "RED"
+  | "BLACK"
+  | "GREEN" {
   if (
     result === 0 ||
     result === "00"
@@ -173,8 +249,11 @@ function getResultColor(
   }
 
   if (
-    typeof result === "number" &&
-    redNumbers.has(result)
+    typeof result ===
+      "number" &&
+    redNumbers.has(
+      result
+    )
   ) {
     return "RED";
   }
@@ -184,47 +263,72 @@ function getResultColor(
 
 function didBetWin(
   bet: BetType,
-  pocket: RouletteResult
+  pocket:
+    RouletteResult
 ) {
   const color =
-    getResultColor(pocket);
+    getResultColor(
+      pocket
+    );
 
-  if (bet === "RED") {
-    return color === "RED";
-  }
-
-  if (bet === "BLACK") {
-    return color === "BLACK";
-  }
-
-  if (bet === "ODD") {
+  if (
+    bet === "RED"
+  ) {
     return (
-      typeof pocket === "number" &&
+      color === "RED"
+    );
+  }
+
+  if (
+    bet === "BLACK"
+  ) {
+    return (
+      color ===
+      "BLACK"
+    );
+  }
+
+  if (
+    bet === "ODD"
+  ) {
+    return (
+      typeof pocket ===
+        "number" &&
       pocket !== 0 &&
       pocket % 2 !== 0
     );
   }
 
   return (
-    typeof pocket === "number" &&
+    typeof pocket ===
+      "number" &&
     pocket !== 0 &&
     pocket % 2 === 0
   );
 }
 
-function formatTime(seconds: number) {
+function formatTime(
+  seconds: number
+) {
   const minutes =
-    Math.floor(seconds / 60);
+    Math.floor(
+      seconds / 60
+    );
 
   const remainingSeconds =
     seconds % 60;
 
-  return `${String(minutes).padStart(
+  return `${String(
+    minutes
+  ).padStart(
     2,
     "0"
   )}:${String(
     remainingSeconds
-  ).padStart(2, "0")}`;
+  ).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 function formatHistoryTime(
@@ -232,42 +336,95 @@ function formatHistoryTime(
 ) {
   return new Date(
     timestamp
-  ).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  ).toLocaleTimeString(
+    [],
+    {
+      hour:
+        "2-digit",
+      minute:
+        "2-digit",
+      second:
+        "2-digit",
+    }
+  );
 }
 
 export default function Home() {
-  const [hydrated, setHydrated] =
+  const [
+    hydrated,
+    setHydrated,
+  ] =
     useState(false);
 
-  const [rotation, setRotation] =
+  /*
+    MODE
+
+    false =
+    real Zcash testnet
+    block result
+
+    true =
+    fast local demo
+    result
+  */
+
+  const [
+    demoMode,
+    setDemoMode,
+  ] =
+    useState(false);
+
+  const [
+    rotation,
+    setRotation,
+  ] =
     useState(0);
 
-  const [roundPhase, setRoundPhase] =
-    useState<RoundPhase>("BETTING");
-
-  const [sourceState, setSourceState] =
-    useState<SourceState>("READY");
-
-  const [result, setResult] =
-    useState<RouletteResult | null>(
-      null
+  const [
+    roundPhase,
+    setRoundPhase,
+  ] =
+    useState<RoundPhase>(
+      "BETTING"
     );
 
-  const [betAmount, setBetAmount] =
+  const [
+    sourceState,
+    setSourceState,
+  ] =
+    useState<SourceState>(
+      "READY"
+    );
+
+  const [
+    result,
+    setResult,
+  ] =
+    useState<
+      RouletteResult |
+        null
+    >(null);
+
+  const [
+    betAmount,
+    setBetAmount,
+  ] =
     useState("1");
 
-  const [balance, setBalance] =
+  const [
+    balance,
+    setBalance,
+  ] =
     useState(100);
 
   const [
     blockHeight,
     setBlockHeight,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     testnetConnected,
@@ -279,59 +436,82 @@ export default function Home() {
     bestBlockHash,
     setBestBlockHash,
   ] =
-    useState<string | null>(null);
+    useState<
+      string |
+        null
+    >(null);
 
   const [
     targetBlockHeight,
     setTargetBlockHeight,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     roundBlockHash,
     setRoundBlockHash,
   ] =
-    useState<string | null>(null);
+    useState<
+      string |
+        null
+    >(null);
 
   const [
     roundVerifiedPocket,
     setRoundVerifiedPocket,
   ] =
-    useState<RouletteResult | null>(
-      null
-    );
+    useState<
+      RouletteResult |
+        null
+    >(null);
 
   const [
     roundBet,
     setRoundBet,
   ] =
-    useState<BetType | null>(null);
+    useState<
+      BetType |
+        null
+    >(null);
 
   const [
     roundWager,
     setRoundWager,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     selectedBet,
     setSelectedBet,
   ] =
-    useState<BetType | null>(null);
+    useState<
+      BetType |
+        null
+    >(null);
 
   const [
     outcome,
     setOutcome,
   ] =
-    useState<"WIN" | "LOSS" | null>(
-      null
-    );
+    useState<
+      | "WIN"
+      | "LOSS"
+      | null
+    >(null);
 
   const [
     bettingTimeLeft,
     setBettingTimeLeft,
   ] =
-    useState(BETTING_SECONDS);
+    useState(
+      BETTING_SECONDS
+    );
 
   const [
     waitingSeconds,
@@ -343,19 +523,28 @@ export default function Home() {
     bettingEndsAt,
     setBettingEndsAt,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     waitingStartedAt,
     setWaitingStartedAt,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     resultEndsAt,
     setResultEndsAt,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     confirmationDepth,
@@ -367,7 +556,10 @@ export default function Home() {
     sourceTipHeight,
     setSourceTipHeight,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     pollAttempts,
@@ -391,7 +583,10 @@ export default function Home() {
     blockFoundAt,
     setBlockFoundAt,
   ] =
-    useState<number | null>(null);
+    useState<
+      number |
+        null
+    >(null);
 
   const [
     roundSettled,
@@ -399,8 +594,13 @@ export default function Home() {
   ] =
     useState(false);
 
-  const [history, setHistory] =
-    useState<HistoryEntry[]>([]);
+  const [
+    history,
+    setHistory,
+  ] =
+    useState<
+      HistoryEntry[]
+    >([]);
 
   const resolvingBlockRef =
     useRef(false);
@@ -408,83 +608,143 @@ export default function Home() {
   const pollInFlightRef =
     useRef(false);
 
+  const demoSpinInFlightRef =
+    useRef(false);
+
   const wagerAmount =
-    Number(betAmount);
+    Number(
+      betAmount
+    );
 
   const invalidBet =
-    betAmount.trim() === "" ||
+    betAmount.trim() ===
+      "" ||
     !Number.isFinite(
       wagerAmount
     ) ||
     wagerAmount < 1 ||
-    wagerAmount > balance;
+    wagerAmount >
+      balance;
 
   const bettingOpen =
     hydrated &&
-    roundPhase === "BETTING" &&
-    bettingTimeLeft > 0;
+    roundPhase ===
+      "BETTING" &&
+    bettingTimeLeft >
+      0;
 
   const spinning =
-    roundPhase === "SPINNING";
+    roundPhase ===
+    "SPINNING";
+
+  /*
+    START FRESH ROUND
+  */
 
   const startNewRound =
     useCallback(() => {
       const deadline =
         Date.now() +
-        BETTING_SECONDS * 1000;
+        BETTING_SECONDS *
+          1000;
 
-      setRoundPhase("BETTING");
+      setRoundPhase(
+        "BETTING"
+      );
 
-      setSourceState("READY");
+      setSourceState(
+        "READY"
+      );
 
-      setBettingEndsAt(deadline);
+      setBettingEndsAt(
+        deadline
+      );
 
       setBettingTimeLeft(
         BETTING_SECONDS
       );
 
-      setWaitingStartedAt(null);
+      setWaitingStartedAt(
+        null
+      );
 
-      setWaitingSeconds(0);
+      setWaitingSeconds(
+        0
+      );
 
-      setResultEndsAt(null);
+      setResultEndsAt(
+        null
+      );
 
-      setSelectedBet(null);
+      setSelectedBet(
+        null
+      );
 
-      setRoundBet(null);
+      setRoundBet(
+        null
+      );
 
-      setRoundWager(null);
+      setRoundWager(
+        null
+      );
 
-      setTargetBlockHeight(null);
+      setTargetBlockHeight(
+        null
+      );
 
-      setRoundBlockHash(null);
+      setRoundBlockHash(
+        null
+      );
 
-      setRoundVerifiedPocket(null);
+      setRoundVerifiedPocket(
+        null
+      );
 
       setResult(null);
 
       setOutcome(null);
 
-      setRoundSettled(false);
+      setRoundSettled(
+        false
+      );
 
-      setConfirmationDepth(0);
+      setConfirmationDepth(
+        0
+      );
 
-      setSourceTipHeight(null);
+      setSourceTipHeight(
+        null
+      );
 
-      setPollAttempts(0);
+      setPollAttempts(
+        0
+      );
 
-      setSourceErrors(0);
+      setSourceErrors(
+        0
+      );
 
-      setReorgCount(0);
+      setReorgCount(
+        0
+      );
 
-      setBlockFoundAt(null);
+      setBlockFoundAt(
+        null
+      );
 
       resolvingBlockRef.current =
         false;
 
       pollInFlightRef.current =
         false;
+
+      demoSpinInFlightRef.current =
+        false;
     }, []);
+
+  /*
+    RESTORE LOCAL STATE
+  */
 
   useEffect(() => {
     const raw =
@@ -494,7 +754,11 @@ export default function Home() {
 
     if (!raw) {
       startNewRound();
-      setHydrated(true);
+
+      setHydrated(
+        true
+      );
+
       return;
     }
 
@@ -504,17 +768,31 @@ export default function Home() {
           raw
         ) as Partial<StoredState>;
 
-      const now = Date.now();
+      const now =
+        Date.now();
 
-      if (saved.version !== 3) {
+      if (
+        saved.version !==
+        3
+      ) {
         window.localStorage.removeItem(
           STORAGE_KEY
         );
 
         startNewRound();
-        setHydrated(true);
+
+        setHydrated(
+          true
+        );
+
         return;
       }
+
+      setDemoMode(
+        Boolean(
+          saved.demoMode
+        )
+      );
 
       if (
         typeof saved.betAmount ===
@@ -578,11 +856,13 @@ export default function Home() {
       );
 
       setResult(
-        saved.result ?? null
+        saved.result ??
+          null
       );
 
       setOutcome(
-        saved.outcome ?? null
+        saved.outcome ??
+          null
       );
 
       setRoundSettled(
@@ -620,15 +900,30 @@ export default function Home() {
           null
       );
 
+      /*
+        Restore active
+        BLOCKCHAIN round.
+
+        Demo rounds are not
+        resumed halfway through.
+        If someone refreshes
+        during a demo spin,
+        the last safely saved
+        betting state is restored.
+      */
+
       const activeBlockRound =
-        saved.roundPhase ===
-          "WAITING" ||
-        saved.roundPhase ===
-          "CONFIRMING" ||
-        saved.roundPhase ===
-          "REORG_DETECTED" ||
-        saved.roundPhase ===
-          "SPINNING";
+        !saved.demoMode &&
+        (
+          saved.roundPhase ===
+            "WAITING" ||
+          saved.roundPhase ===
+            "CONFIRMING" ||
+          saved.roundPhase ===
+            "REORG_DETECTED" ||
+          saved.roundPhase ===
+            "SPINNING"
+        );
 
       if (
         activeBlockRound &&
@@ -636,7 +931,8 @@ export default function Home() {
           .targetBlockHeight ===
           "number" &&
         saved.roundBet &&
-        typeof saved.roundWager ===
+        typeof saved
+          .roundWager ===
           "number"
       ) {
         const startedAt =
@@ -654,12 +950,15 @@ export default function Home() {
               (
                 now -
                 startedAt
-              ) / 1000
+              ) /
+                1000
             )
           )
         );
 
-        setBettingEndsAt(null);
+        setBettingEndsAt(
+          null
+        );
 
         if (
           saved.roundBlockHash
@@ -681,9 +980,16 @@ export default function Home() {
           );
         }
 
-        setHydrated(true);
+        setHydrated(
+          true
+        );
+
         return;
       }
+
+      /*
+        RESTORE RESULT
+      */
 
       if (
         saved.roundPhase ===
@@ -695,21 +1001,35 @@ export default function Home() {
         saved.resultEndsAt >
           now
       ) {
-        setRoundPhase("RESULT");
+        setRoundPhase(
+          "RESULT"
+        );
 
         setSourceState(
-          "VERIFIED"
+          saved.demoMode
+            ? "READY"
+            : "VERIFIED"
         );
 
         setResultEndsAt(
           saved.resultEndsAt
         );
 
-        setBettingEndsAt(null);
+        setBettingEndsAt(
+          null
+        );
 
-        setHydrated(true);
+        setHydrated(
+          true
+        );
+
         return;
       }
+
+      /*
+        RESTORE ACTIVE
+        BETTING TIMER
+      */
 
       if (
         saved.roundPhase ===
@@ -728,13 +1048,18 @@ export default function Home() {
                 saved
                   .bettingEndsAt -
                 now
-              ) / 1000
+              ) /
+                1000
             )
           );
 
-        setRoundPhase("BETTING");
+        setRoundPhase(
+          "BETTING"
+        );
 
-        setSourceState("READY");
+        setSourceState(
+          "READY"
+        );
 
         setBettingEndsAt(
           saved.bettingEndsAt
@@ -744,81 +1069,125 @@ export default function Home() {
           secondsLeft
         );
 
-        setHydrated(true);
+        setHydrated(
+          true
+        );
+
         return;
       }
 
       startNewRound();
-      setHydrated(true);
+
+      setHydrated(
+        true
+      );
     } catch {
       window.localStorage.removeItem(
         STORAGE_KEY
       );
 
       startNewRound();
-      setHydrated(true);
+
+      setHydrated(
+        true
+      );
     }
-  }, [startNewRound]);
+  }, [
+    startNewRound,
+  ]);
+
+  /*
+    SAVE STATE
+  */
 
   useEffect(() => {
     if (!hydrated) {
       return;
     }
 
-    const state: StoredState = {
-      version: 3,
+    /*
+      Don't overwrite the
+      last safe state during
+      an active Demo spin.
 
-      roundPhase,
+      So refreshing during
+      a demo animation doesn't
+      leave a half-settled round.
+    */
 
-      betAmount,
+    if (
+      demoMode &&
+      (
+        roundPhase ===
+          "LOCKING" ||
+        roundPhase ===
+          "SPINNING"
+      )
+    ) {
+      return;
+    }
 
-      balance,
+    const state:
+      StoredState =
+      {
+        version: 3,
 
-      targetBlockHeight,
+        demoMode,
 
-      roundBlockHash,
+        roundPhase,
 
-      roundVerifiedPocket,
+        betAmount,
 
-      roundBet,
+        balance,
 
-      roundWager,
+        targetBlockHeight,
 
-      selectedBet,
+        roundBlockHash,
 
-      result,
+        roundVerifiedPocket,
 
-      outcome,
+        roundBet,
 
-      history,
+        roundWager,
 
-      bettingEndsAt,
+        selectedBet,
 
-      waitingStartedAt,
+        result,
 
-      resultEndsAt,
+        outcome,
 
-      roundSettled,
+        history,
 
-      confirmationDepth,
+        bettingEndsAt,
 
-      sourceTipHeight,
+        waitingStartedAt,
 
-      pollAttempts,
+        resultEndsAt,
 
-      sourceErrors,
+        roundSettled,
 
-      reorgCount,
+        confirmationDepth,
 
-      blockFoundAt,
-    };
+        sourceTipHeight,
+
+        pollAttempts,
+
+        sourceErrors,
+
+        reorgCount,
+
+        blockFoundAt,
+      };
 
     window.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(state)
+      JSON.stringify(
+        state
+      )
     );
   }, [
     hydrated,
+    demoMode,
     roundPhase,
     betAmount,
     balance,
@@ -843,6 +1212,18 @@ export default function Home() {
     blockFoundAt,
   ]);
 
+  /*
+    LOAD ZCASH STATUS
+
+    We still display Testnet
+    status while Demo Mode
+    is enabled.
+
+    Demo Mode simply doesn't
+    use it to determine the
+    roulette result.
+  */
+
   useEffect(() => {
     async function loadZcashStatus() {
       try {
@@ -850,7 +1231,8 @@ export default function Home() {
           await fetch(
             "/api/zcash-status",
             {
-              cache: "no-store",
+              cache:
+                "no-store",
             }
           );
 
@@ -870,25 +1252,39 @@ export default function Home() {
         );
 
         setTestnetConnected(
-          Boolean(data.connected)
+          Boolean(
+            data.connected
+          )
         );
       } catch {
-        setBlockHeight(null);
+        setBlockHeight(
+          null
+        );
 
-        setBestBlockHash(null);
+        setBestBlockHash(
+          null
+        );
 
-        setTestnetConnected(false);
+        setTestnetConnected(
+          false
+        );
       }
     }
 
     loadZcashStatus();
   }, []);
 
+  /*
+    BETTING TIMER
+  */
+
   useEffect(() => {
     if (
       !hydrated ||
-      roundPhase !== "BETTING" ||
-      bettingEndsAt === null
+      roundPhase !==
+        "BETTING" ||
+      bettingEndsAt ===
+        null
     ) {
       return;
     }
@@ -901,7 +1297,8 @@ export default function Home() {
             (
               bettingEndsAt -
               Date.now()
-            ) / 1000
+            ) /
+              1000
           )
         );
 
@@ -919,7 +1316,9 @@ export default function Home() {
       );
 
     return () => {
-      window.clearInterval(timer);
+      window.clearInterval(
+        timer
+      );
     };
   }, [
     hydrated,
@@ -927,27 +1326,47 @@ export default function Home() {
     bettingEndsAt,
   ]);
 
+  /*
+    MISSED ROUND
+
+    Show missed message
+    for 3 seconds then
+    automatically reopen
+    betting.
+
+    No browser refresh
+    required.
+  */
+
   useEffect(() => {
     if (
       !hydrated ||
-      roundPhase !== "BETTING" ||
-      bettingTimeLeft !== 0
+      roundPhase !==
+        "BETTING" ||
+      bettingTimeLeft !==
+        0
     ) {
       return;
     }
 
-    setRoundPhase("MISSED");
+    setRoundPhase(
+      "MISSED"
+    );
 
-    setBettingEndsAt(null);
+    setBettingEndsAt(
+      null
+    );
 
     const timer =
       window.setTimeout(
         startNewRound,
-        2000
+        3000
       );
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(
+        timer
+      );
     };
   }, [
     hydrated,
@@ -956,16 +1375,23 @@ export default function Home() {
     startNewRound,
   ]);
 
+  /*
+    BLOCK WAIT TIMER
+  */
+
   useEffect(() => {
     const active =
-      roundPhase === "WAITING" ||
-      roundPhase === "CONFIRMING" ||
+      roundPhase ===
+        "WAITING" ||
+      roundPhase ===
+        "CONFIRMING" ||
       roundPhase ===
         "REORG_DETECTED";
 
     if (
       !active ||
-      waitingStartedAt === null
+      waitingStartedAt ===
+        null
     ) {
       return;
     }
@@ -978,7 +1404,8 @@ export default function Home() {
             (
               Date.now() -
               waitingStartedAt
-            ) / 1000
+            ) /
+              1000
           )
         )
       );
@@ -993,17 +1420,25 @@ export default function Home() {
       );
 
     return () => {
-      window.clearInterval(timer);
+      window.clearInterval(
+        timer
+      );
     };
   }, [
     roundPhase,
     waitingStartedAt,
   ]);
 
+  /*
+    RESULT DISPLAY TIMER
+  */
+
   useEffect(() => {
     if (
-      roundPhase !== "RESULT" ||
-      resultEndsAt === null
+      roundPhase !==
+        "RESULT" ||
+      resultEndsAt ===
+        null
     ) {
       return;
     }
@@ -1012,19 +1447,24 @@ export default function Home() {
       resultEndsAt -
       Date.now();
 
-    if (remaining <= 0) {
+    if (
+      remaining <= 0
+    ) {
       startNewRound();
+
       return;
     }
 
-   const timer =
-  window.setTimeout(
-    startNewRound,
-    3000
-  );
+    const timer =
+      window.setTimeout(
+        startNewRound,
+        remaining
+      );
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(
+        timer
+      );
     };
   }, [
     roundPhase,
@@ -1032,16 +1472,30 @@ export default function Home() {
     startNewRound,
   ]);
 
+  /*
+    BLOCKCHAIN
+    CONFIRMATION ENGINE
+
+    Demo Mode NEVER enters
+    this effect because it
+    does not use WAITING /
+    CONFIRMING states.
+  */
+
   useEffect(() => {
     const active =
-      roundPhase === "WAITING" ||
-      roundPhase === "CONFIRMING" ||
+      roundPhase ===
+        "WAITING" ||
+      roundPhase ===
+        "CONFIRMING" ||
       roundPhase ===
         "REORG_DETECTED";
 
     if (
+      demoMode ||
       !active ||
-      targetBlockHeight === null
+      targetBlockHeight ===
+        null
     ) {
       return;
     }
@@ -1067,7 +1521,8 @@ export default function Home() {
           await fetch(
             `/api/zcash-block/${targetBlockHeight}`,
             {
-              cache: "no-store",
+              cache:
+                "no-store",
             }
           );
 
@@ -1084,7 +1539,9 @@ export default function Home() {
               current + 1
           );
 
-          setTestnetConnected(false);
+          setTestnetConnected(
+            false
+          );
 
           setSourceState(
             "SOURCE_UNAVAILABLE"
@@ -1093,7 +1550,9 @@ export default function Home() {
           return;
         }
 
-        setTestnetConnected(true);
+        setTestnetConnected(
+          true
+        );
 
         if (
           typeof data.tipHeight ===
@@ -1109,15 +1568,20 @@ export default function Home() {
         }
 
         if (
-          data.status === "NOT_MINED"
+          data.status ===
+          "NOT_MINED"
         ) {
-          setRoundPhase("WAITING");
+          setRoundPhase(
+            "WAITING"
+          );
 
           setSourceState(
             "WAITING_FOR_BLOCK"
           );
 
-          setConfirmationDepth(0);
+          setConfirmationDepth(
+            0
+          );
 
           return;
         }
@@ -1126,7 +1590,9 @@ export default function Home() {
           data.status ===
           "DATA_SOURCE_LAG"
         ) {
-          setRoundPhase("WAITING");
+          setRoundPhase(
+            "WAITING"
+          );
 
           setSourceState(
             "SOURCE_LAG"
@@ -1136,7 +1602,8 @@ export default function Home() {
         }
 
         if (
-          data.status !== "FOUND" ||
+          data.status !==
+            "FOUND" ||
           !data.found ||
           !data.hash
         ) {
@@ -1149,7 +1616,8 @@ export default function Home() {
           ).toLowerCase();
 
         if (
-          roundBlockHash === null
+          roundBlockHash ===
+            null
         ) {
           setRoundBlockHash(
             observedHash
@@ -1161,7 +1629,8 @@ export default function Home() {
         }
 
         if (
-          roundBlockHash !== null &&
+          roundBlockHash !==
+            null &&
           observedHash !==
             roundBlockHash
         ) {
@@ -1207,7 +1676,9 @@ export default function Home() {
             ? data.confirmationDepth
             : 1;
 
-        setConfirmationDepth(depth);
+        setConfirmationDepth(
+          depth
+        );
 
         if (
           depth <
@@ -1236,7 +1707,9 @@ export default function Home() {
             observedHash
           );
 
-        if (pocket === null) {
+        if (
+          pocket === null
+        ) {
           resolvingBlockRef.current =
             false;
 
@@ -1254,17 +1727,23 @@ export default function Home() {
         const resultIndex =
           wheelNumbers.findIndex(
             (number) =>
-              number === pocket
+              number ===
+              pocket
           );
 
-        if (resultIndex === -1) {
+        if (
+          resultIndex ===
+          -1
+        ) {
           resolvingBlockRef.current =
             false;
 
           return;
         }
 
-        setRoundPhase("SPINNING");
+        setRoundPhase(
+          "SPINNING"
+        );
 
         setResult(null);
 
@@ -1277,7 +1756,8 @@ export default function Home() {
         setRotation(
           (current) => {
             const currentPosition =
-              current % 360;
+              current %
+              360;
 
             const targetPosition =
               -(
@@ -1300,8 +1780,10 @@ export default function Home() {
         window.setTimeout(
           () => {
             if (
-              roundBet === null ||
-              roundWager === null
+              roundBet ===
+                null ||
+              roundWager ===
+                null
             ) {
               resolvingBlockRef.current =
                 false;
@@ -1316,9 +1798,13 @@ export default function Home() {
               );
 
             const pocketColor =
-              getResultColor(pocket);
+              getResultColor(
+                pocket
+              );
 
-            setResult(pocket);
+            setResult(
+              pocket
+            );
 
             setOutcome(
               won
@@ -1326,23 +1812,29 @@ export default function Home() {
                 : "LOSS"
             );
 
-            if (!roundSettled) {
+            if (
+              !roundSettled
+            ) {
               if (won) {
                 setBalance(
                   (current) =>
                     current +
-                    roundWager * 2
+                    roundWager *
+                      2
                 );
               }
 
-              const historyEntry: HistoryEntry =
+              const historyEntry:
+                HistoryEntry =
                 {
-                  result: pocket,
+                  result:
+                    pocket,
 
                   resultColor:
                     pocketColor,
 
-                  bet: roundBet,
+                  bet:
+                    roundBet,
 
                   amount:
                     roundWager,
@@ -1360,6 +1852,9 @@ export default function Home() {
 
                   timestamp:
                     Date.now(),
+
+                  mode:
+                    "BLOCKCHAIN",
                 };
 
               setHistory(
@@ -1373,16 +1868,22 @@ export default function Home() {
                   )
               );
 
-              setRoundSettled(true);
+              setRoundSettled(
+                true
+              );
             }
 
             const endsAt =
               Date.now() +
               3000;
 
-            setResultEndsAt(endsAt);
+            setResultEndsAt(
+              endsAt
+            );
 
-            setRoundPhase("RESULT");
+            setRoundPhase(
+              "RESULT"
+            );
 
             setSourceState(
               "VERIFIED"
@@ -1399,7 +1900,9 @@ export default function Home() {
             current + 1
         );
 
-        setTestnetConnected(false);
+        setTestnetConnected(
+          false
+        );
 
         setSourceState(
           "SOURCE_UNAVAILABLE"
@@ -1419,9 +1922,12 @@ export default function Home() {
       );
 
     return () => {
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval
+      );
     };
   }, [
+    demoMode,
     roundPhase,
     targetBlockHeight,
     roundBlockHash,
@@ -1430,36 +1936,334 @@ export default function Home() {
     roundSettled,
   ]);
 
+  /*
+    DEMO SPIN
+
+    Does NOT:
+    - lock a Zcash block
+    - request a block hash
+    - run blockchain verifier
+    - claim blockchain verification
+
+    It is only for
+    fast interface testing.
+  */
+
+  async function runDemoSpin(
+    wager: number,
+    lockedBet:
+      BetType
+  ) {
+    if (
+      demoSpinInFlightRef.current
+    ) {
+      return;
+    }
+
+    demoSpinInFlightRef.current =
+      true;
+
+    setRoundPhase(
+      "LOCKING"
+    );
+
+    setSourceState(
+      "READY"
+    );
+
+    setRoundBet(
+      lockedBet
+    );
+
+    setRoundWager(
+      wager
+    );
+
+    setBalance(
+      (current) =>
+        current - wager
+    );
+
+    setBettingEndsAt(
+      null
+    );
+
+    setBettingTimeLeft(
+      0
+    );
+
+    setWaitingStartedAt(
+      null
+    );
+
+    setWaitingSeconds(
+      0
+    );
+
+    setTargetBlockHeight(
+      null
+    );
+
+    setRoundBlockHash(
+      null
+    );
+
+    setRoundVerifiedPocket(
+      null
+    );
+
+    setConfirmationDepth(
+      0
+    );
+
+    setResult(null);
+
+    setOutcome(null);
+
+    setRoundSettled(
+      false
+    );
+
+    setResultEndsAt(
+      null
+    );
+
+    /*
+      Small delay so testers
+      can see that the round
+      was submitted.
+    */
+
+    await new Promise<void>(
+      (resolve) => {
+        window.setTimeout(
+          resolve,
+          DEMO_DELAY_MS
+        );
+      }
+    );
+
+    /*
+      Demo-only random
+      roulette pocket.
+    */
+
+    const randomIndex =
+      Math.floor(
+        Math.random() *
+          wheelNumbers.length
+      );
+
+    const pocket =
+      wheelNumbers[
+        randomIndex
+      ];
+
+    const pocketColor =
+      getResultColor(
+        pocket
+      );
+
+    setRoundVerifiedPocket(
+      pocket
+    );
+
+    setRoundPhase(
+      "SPINNING"
+    );
+
+    const segmentAngle =
+      360 /
+      wheelNumbers.length;
+
+    setRotation(
+      (current) => {
+        const currentPosition =
+          current % 360;
+
+        const targetPosition =
+          -(
+            randomIndex *
+            segmentAngle
+          );
+
+        const adjustment =
+          targetPosition -
+          currentPosition;
+
+        return (
+          current +
+          1440 +
+          adjustment
+        );
+      }
+    );
+
+    window.setTimeout(
+      () => {
+        const won =
+          didBetWin(
+            lockedBet,
+            pocket
+          );
+
+        setResult(
+          pocket
+        );
+
+        setOutcome(
+          won
+            ? "WIN"
+            : "LOSS"
+        );
+
+        if (won) {
+          setBalance(
+            (current) =>
+              current +
+              wager *
+                2
+          );
+        }
+
+        const historyEntry:
+          HistoryEntry =
+          {
+            result:
+              pocket,
+
+            resultColor:
+              pocketColor,
+
+            bet:
+              lockedBet,
+
+            amount:
+              wager,
+
+            outcome:
+              won
+                ? "WIN"
+                : "LOSS",
+
+            /*
+              Demo rounds have
+              no blockchain proof.
+            */
+
+            blockHeight:
+              null,
+
+            blockHash:
+              null,
+
+            timestamp:
+              Date.now(),
+
+            mode:
+              "DEMO",
+          };
+
+        setHistory(
+          (current) =>
+            [
+              historyEntry,
+              ...current,
+            ].slice(
+              0,
+              MAX_HISTORY_ITEMS
+            )
+        );
+
+        setRoundSettled(
+          true
+        );
+
+        const endsAt =
+          Date.now() +
+          3000;
+
+        setResultEndsAt(
+          endsAt
+        );
+
+        setRoundPhase(
+          "RESULT"
+        );
+
+        setSourceState(
+          "READY"
+        );
+
+        demoSpinInFlightRef.current =
+          false;
+      },
+      3000
+    );
+  }
+
+  /*
+    MAIN SPIN BUTTON
+  */
+
   async function handleSpin() {
     const wager =
-      Number(betAmount);
-
-    if (!bettingOpen) {
-      return;
-    }
+      Number(
+        betAmount
+      );
 
     if (
-      selectedBet === null
+      !bettingOpen
     ) {
       return;
     }
 
     if (
-      !Number.isFinite(wager) ||
+      selectedBet ===
+      null
+    ) {
+      return;
+    }
+
+    if (
+      !Number.isFinite(
+        wager
+      ) ||
       wager < 1 ||
-      wager > balance
+      wager >
+        balance
     ) {
       return;
     }
 
-    setRoundPhase("LOCKING");
+    /*
+      DEMO PATH
+    */
+
+    if (demoMode) {
+      await runDemoSpin(
+        wager,
+        selectedBet
+      );
+
+      return;
+    }
+
+    /*
+      BLOCKCHAIN PATH
+    */
+
+    setRoundPhase(
+      "LOCKING"
+    );
 
     try {
       const response =
         await fetch(
           "/api/zcash-status",
           {
-            cache: "no-store",
+            cache:
+              "no-store",
           }
         );
 
@@ -1471,9 +2275,13 @@ export default function Home() {
         typeof data.height !==
           "number"
       ) {
-        setTestnetConnected(false);
+        setTestnetConnected(
+          false
+        );
 
-        setRoundPhase("BETTING");
+        setRoundPhase(
+          "BETTING"
+        );
 
         return;
       }
@@ -1482,7 +2290,8 @@ export default function Home() {
         data.height;
 
       const nextBlock =
-        currentBlock + 1;
+        currentBlock +
+        1;
 
       setBlockHeight(
         currentBlock
@@ -1493,22 +2302,31 @@ export default function Home() {
           null
       );
 
-      setTestnetConnected(true);
+      setTestnetConnected(
+        true
+      );
 
       setRoundBet(
         selectedBet
       );
 
-      setRoundWager(wager);
+      setRoundWager(
+        wager
+      );
 
       setBalance(
         (current) =>
-          current - wager
+          current -
+          wager
       );
 
-      setBettingEndsAt(null);
+      setBettingEndsAt(
+        null
+      );
 
-      setBettingTimeLeft(0);
+      setBettingTimeLeft(
+        0
+      );
 
       const waitStart =
         Date.now();
@@ -1517,37 +2335,57 @@ export default function Home() {
         waitStart
       );
 
-      setWaitingSeconds(0);
+      setWaitingSeconds(
+        0
+      );
 
       setTargetBlockHeight(
         nextBlock
       );
 
-      setRoundBlockHash(null);
+      setRoundBlockHash(
+        null
+      );
 
-      setRoundVerifiedPocket(null);
+      setRoundVerifiedPocket(
+        null
+      );
 
-      setConfirmationDepth(0);
+      setConfirmationDepth(
+        0
+      );
 
       setSourceTipHeight(
         currentBlock
       );
 
-      setPollAttempts(0);
+      setPollAttempts(
+        0
+      );
 
-      setSourceErrors(0);
+      setSourceErrors(
+        0
+      );
 
-      setReorgCount(0);
+      setReorgCount(
+        0
+      );
 
-      setBlockFoundAt(null);
+      setBlockFoundAt(
+        null
+      );
 
       setResult(null);
 
       setOutcome(null);
 
-      setRoundSettled(false);
+      setRoundSettled(
+        false
+      );
 
-      setResultEndsAt(null);
+      setResultEndsAt(
+        null
+      );
 
       resolvingBlockRef.current =
         false;
@@ -1559,17 +2397,61 @@ export default function Home() {
         "WAITING_FOR_BLOCK"
       );
 
-      setRoundPhase("WAITING");
+      setRoundPhase(
+        "WAITING"
+      );
     } catch {
-      setTestnetConnected(false);
+      setTestnetConnected(
+        false
+      );
 
-      setRoundPhase("BETTING");
+      setRoundPhase(
+        "BETTING"
+      );
     }
+  }
+
+  /*
+    MODE TOGGLE
+
+    Only allow switching
+    while betting is open.
+
+    Never change mode during
+    an active round.
+  */
+
+  function toggleDemoMode() {
+    if (
+      roundPhase !==
+      "BETTING"
+    ) {
+      return;
+    }
+
+    setDemoMode(
+      (current) =>
+        !current
+    );
+
+    setSelectedBet(
+      null
+    );
+
+    setResult(null);
+
+    setOutcome(null);
+
+    setSourceState(
+      "READY"
+    );
   }
 
   return (
     <main className="game">
+
       <header className="topbar">
+
         <div>
           <h1 className="brand">
             ZKSPIN
@@ -1581,6 +2463,59 @@ export default function Home() {
         </div>
 
         <div className="topbar-info">
+
+          <div className="mode-control">
+            <span className="mode-label">
+              MODE
+            </span>
+
+            <div className="mode-switch-row">
+
+              <span
+                className={
+                  !demoMode
+                    ? "mode-name active"
+                    : "mode-name"
+                }
+              >
+                BLOCKCHAIN
+              </span>
+
+              <button
+                type="button"
+                className={
+                  demoMode
+                    ? "mode-toggle active"
+                    : "mode-toggle"
+                }
+                onClick={
+                  toggleDemoMode
+                }
+                disabled={
+                  roundPhase !==
+                  "BETTING"
+                }
+                aria-label="Toggle Demo Mode"
+                aria-pressed={
+                  demoMode
+                }
+              >
+                <span className="mode-toggle-knob" />
+              </button>
+
+              <span
+                className={
+                  demoMode
+                    ? "mode-name active"
+                    : "mode-name"
+                }
+              >
+                DEMO
+              </span>
+
+            </div>
+          </div>
+
           <div className="balance">
             <span>
               Balance
@@ -1592,30 +2527,60 @@ export default function Home() {
           </div>
 
           <div className="network-status">
+
             <span>
-              ZCASH TESTNET •{" "}
-              {testnetConnected
-                ? "CONNECTED"
-                : "OFFLINE"}
+              {demoMode
+                ? "DEMO MODE • LOCAL RANDOM"
+                : `ZCASH TESTNET • ${
+                    testnetConnected
+                      ? "CONNECTED"
+                      : "OFFLINE"
+                  }`}
             </span>
 
             <strong>
-              BLOCK:{" "}
-              {blockHeight ?? "—"}
+              {demoMode
+                ? "BLOCKCHAIN VERIFICATION BYPASSED"
+                : `BLOCK: ${
+                    blockHeight ??
+                    "—"
+                  }`}
             </strong>
+
           </div>
+
         </div>
+
       </header>
 
       <section className="roulette-section">
+
         <RouletteWheel
-          rotation={rotation}
-          spinning={spinning}
+          rotation={
+            rotation
+          }
+          spinning={
+            spinning
+          }
         />
 
-        {sourceState ===
-        "SOURCE_LAG" ? (
+        {demoMode &&
+        roundPhase ===
+          "LOCKING" ? (
+          <p className="wheel-label">
+            PREPARING DEMO ROUND...
+          </p>
+        ) : demoMode &&
+          roundPhase ===
+            "SPINNING" ? (
+          <p className="wheel-label">
+            DEMO RESULT —
+            SPINNING...
+          </p>
+        ) : sourceState ===
+          "SOURCE_LAG" ? (
           <div>
+
             <p className="wheel-label">
               BLOCKCHAIN DATA
               CATCHING UP
@@ -1623,12 +2588,15 @@ export default function Home() {
 
             <p className="wheel-label">
               LOCKED BLOCK{" "}
-              {targetBlockHeight ?? "—"}
+              {targetBlockHeight ??
+                "—"}
             </p>
+
           </div>
         ) : sourceState ===
           "SOURCE_UNAVAILABLE" ? (
           <div>
+
             <p className="wheel-label">
               BLOCKCHAIN DATA
               TEMPORARILY UNAVAILABLE
@@ -1637,14 +2605,17 @@ export default function Home() {
             <p className="wheel-label">
               RETRYING...
             </p>
+
           </div>
         ) : roundPhase ===
           "WAITING" ? (
           <div>
+
             <p className="wheel-label">
               WAITING FOR ZCASH
               BLOCK{" "}
-              {targetBlockHeight ?? "—"}
+              {targetBlockHeight ??
+                "—"}
             </p>
 
             <p className="wheel-label">
@@ -1653,15 +2624,18 @@ export default function Home() {
                 waitingSeconds
               )}
             </p>
+
           </div>
         ) : roundPhase ===
             "CONFIRMING" ||
           roundPhase ===
             "REORG_DETECTED" ? (
           <div>
+
             <p className="wheel-label">
               VERIFYING BLOCK{" "}
-              {targetBlockHeight ?? "—"}
+              {targetBlockHeight ??
+                "—"}
             </p>
 
             <p className="wheel-label">
@@ -1670,8 +2644,12 @@ export default function Home() {
                 confirmationDepth,
                 CONFIRMATIONS_REQUIRED
               )}
-              /{CONFIRMATIONS_REQUIRED}
+              /
+              {
+                CONFIRMATIONS_REQUIRED
+              }
             </p>
+
           </div>
         ) : roundPhase ===
           "SPINNING" ? (
@@ -1681,8 +2659,10 @@ export default function Home() {
           </p>
         ) : roundPhase ===
             "RESULT" &&
-          result !== null ? (
+          result !==
+            null ? (
           <div className="spin-result">
+
             <span>
               RESULT
             </span>
@@ -1692,14 +2672,24 @@ export default function Home() {
             </strong>
 
             <em>
-              {getResultColor(result)}
+              {getResultColor(
+                result
+              )}
             </em>
 
-            {outcome !== null && (
+            {demoMode && (
+              <small className="demo-result-label">
+                DEMO RESULT
+              </small>
+            )}
+
+            {outcome !==
+              null && (
               <p className="round-outcome">
                 {outcome}
               </p>
             )}
+
           </div>
         ) : roundPhase ===
           "MISSED" ? (
@@ -1712,17 +2702,24 @@ export default function Home() {
             PLACE YOUR PREDICTION
           </p>
         )}
+
       </section>
 
       <section className="verification-panel">
+
         <div className="verification-header">
+
           <span>
-            BLOCKCHAIN VERIFICATION
+            {demoMode
+              ? "DEMO ROUND"
+              : "BLOCKCHAIN VERIFICATION"}
           </span>
 
           <strong>
-            {sourceState ===
-            "SOURCE_LAG"
+            {demoMode
+              ? "LOCAL RANDOM"
+              : sourceState ===
+                "SOURCE_LAG"
               ? "SYNCING"
               : sourceState ===
                 "SOURCE_UNAVAILABLE"
@@ -1745,25 +2742,36 @@ export default function Home() {
               ? "VERIFIED"
               : "READY"}
           </strong>
+
         </div>
 
         <div className="verification-row">
+
           <span>
-            Locked Block
+            {demoMode
+              ? "Result Source"
+              : "Locked Block"}
           </span>
 
           <strong>
-            {targetBlockHeight ?? "—"}
+            {demoMode
+              ? "LOCAL RANDOM"
+              : targetBlockHeight ??
+                "—"}
           </strong>
+
         </div>
 
         <div className="verification-row">
+
           <span>
             Block Hash
           </span>
 
           <code>
-            {roundBlockHash
+            {demoMode
+              ? "NOT USED"
+              : roundBlockHash
               ? `${roundBlockHash.slice(
                   0,
                   16
@@ -1773,57 +2781,76 @@ export default function Home() {
               ? "WAITING..."
               : "—"}
           </code>
+
         </div>
 
         <div className="verification-row">
+
           <span>
             Confirmation
           </span>
 
           <strong>
-            {roundBlockHash
+            {demoMode
+              ? "NOT USED"
+              : roundBlockHash
               ? `${Math.min(
                   confirmationDepth,
                   CONFIRMATIONS_REQUIRED
                 )}/${CONFIRMATIONS_REQUIRED}`
               : "—"}
           </strong>
+
         </div>
 
         <div className="verification-row">
+
           <span>
-            Verified Pocket
+            {demoMode
+              ? "Demo Pocket"
+              : "Verified Pocket"}
           </span>
 
           <strong>
-            {roundVerifiedPocket ?? "—"}
+            {roundVerifiedPocket ??
+              "—"}
           </strong>
+
         </div>
 
         <div className="verification-row">
+
           <span>
             Block Wait Time
           </span>
 
           <strong>
-            {targetBlockHeight
+            {demoMode
+              ? "NOT USED"
+              : targetBlockHeight
               ? formatTime(
                   waitingSeconds
                 )
               : "—"}
           </strong>
+
         </div>
+
       </section>
 
       <section className="bet-panel">
+
         <div className="betting-timer">
+
           <span>
             {roundPhase ===
             "BETTING"
               ? "BETTING CLOSES IN"
               : roundPhase ===
                 "LOCKING"
-              ? "LOCKING ROUND"
+              ? demoMode
+                ? "PREPARING DEMO ROUND"
+                : "LOCKING ROUND"
               : sourceState ===
                 "SOURCE_LAG"
               ? "BLOCK DATA SYNCING"
@@ -1840,7 +2867,9 @@ export default function Home() {
               ? "VERIFYING BLOCK"
               : roundPhase ===
                 "SPINNING"
-              ? "BLOCK VERIFIED"
+              ? demoMode
+                ? "DEMO SPIN"
+                : "BLOCK VERIFIED"
               : roundPhase ===
                 "RESULT"
               ? "ROUND COMPLETE"
@@ -1864,14 +2893,17 @@ export default function Home() {
                 )
               : "--:--"}
           </strong>
+
         </div>
 
         <div className="bet-amount">
+
           <span>
             Bet amount
           </span>
 
           <div className="amount-control">
+
             <button
               onClick={() =>
                 setBetAmount(
@@ -1880,13 +2912,17 @@ export default function Home() {
                       Math.max(
                         1,
                         Number(
-                          current || 0
-                        ) - 1
+                          current ||
+                            0
+                        ) -
+                          1
                       )
                     )
                 )
               }
-              disabled={!bettingOpen}
+              disabled={
+                !bettingOpen
+              }
             >
               -
             </button>
@@ -1895,13 +2931,20 @@ export default function Home() {
               type="number"
               min="1"
               step="1"
-              value={betAmount}
-              onChange={(event) =>
+              value={
+                betAmount
+              }
+              onChange={(
+                event
+              ) =>
                 setBetAmount(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
-              disabled={!bettingOpen}
+              disabled={
+                !bettingOpen
+              }
             />
 
             <span>
@@ -1914,19 +2957,26 @@ export default function Home() {
                   (current) =>
                     String(
                       Number(
-                        current || 0
-                      ) + 1
+                        current ||
+                          0
+                      ) +
+                        1
                     )
                 )
               }
-              disabled={!bettingOpen}
+              disabled={
+                !bettingOpen
+              }
             >
               +
             </button>
+
           </div>
+
         </div>
 
         <div className="prediction">
+
           <div className="prediction-header">
             <span>
               PREDICT THE RESULT
@@ -1934,6 +2984,7 @@ export default function Home() {
           </div>
 
           <div className="simple-bet-options">
+
             {(
               [
                 "RED",
@@ -1941,41 +2992,64 @@ export default function Home() {
                 "ODD",
                 "EVEN",
               ] as BetType[]
-            ).map((bet) => (
-              <button
-                key={bet}
-                className={
-                  selectedBet === bet
-                    ? "selected"
-                    : ""
-                }
-                onClick={() =>
-                  setSelectedBet(bet)
-                }
-                disabled={!bettingOpen}
-              >
-                {bet}
-              </button>
-            ))}
+            ).map(
+              (
+                bet
+              ) => (
+                <button
+                  key={
+                    bet
+                  }
+                  className={
+                    selectedBet ===
+                    bet
+                      ? "selected"
+                      : ""
+                  }
+                  onClick={() =>
+                    setSelectedBet(
+                      bet
+                    )
+                  }
+                  disabled={
+                    !bettingOpen
+                  }
+                >
+                  {bet}
+                </button>
+              )
+            )}
+
           </div>
+
         </div>
 
         <button
           className="spin-button"
-          onClick={handleSpin}
+          onClick={
+            handleSpin
+          }
           disabled={
             !bettingOpen ||
-            selectedBet === null ||
+            selectedBet ===
+              null ||
             invalidBet ||
-            !testnetConnected
+            (
+              !demoMode &&
+              !testnetConnected
+            )
           }
         >
           {roundPhase ===
           "BETTING"
-            ? "SPIN"
+            ? demoMode
+              ? "DEMO SPIN"
+              : "SPIN"
             : roundPhase ===
               "LOCKING"
-            ? "LOCKING ROUND..."
+            ? demoMode
+              ? "PREPARING DEMO..."
+              : "LOCKING ROUND..."
             : sourceState ===
               "SOURCE_LAG"
             ? "BLOCK DATA SYNCING..."
@@ -2001,41 +3075,61 @@ export default function Home() {
             ? "ROUND COMPLETE"
             : "ROUND MISSED"}
         </button>
+
       </section>
 
       <section className="history">
+
         <div className="history-header">
+
           <h2>
             Recent Spins
           </h2>
 
           <span>
-            LAST {MAX_HISTORY_ITEMS}
+            LAST{" "}
+            {
+              MAX_HISTORY_ITEMS
+            }
           </span>
+
         </div>
 
-        {history.length === 0 ? (
+        {history.length ===
+        0 ? (
           <div className="history-empty">
-            No verified spins yet.
+            No spins yet.
           </div>
         ) : (
           <div className="history-list">
+
             {history.map(
-              (round, index) => (
+              (
+                round,
+                index
+              ) => (
                 <div
                   className="history-item"
                   key={`${round.timestamp}-${index}`}
                 >
+
                   <div
                     className={`history-number ${round.resultColor.toLowerCase()}`}
                   >
-                    {round.result}
+                    {
+                      round.result
+                    }
                   </div>
 
                   <div className="history-details">
+
                     <div className="history-top-row">
+
                       <span>
-                        BET: {round.bet}
+                        BET:{" "}
+                        {
+                          round.bet
+                        }
                       </span>
 
                       <span>
@@ -2043,32 +3137,48 @@ export default function Home() {
                           round.timestamp
                         )}
                       </span>
+
                     </div>
 
                     <p>
-                      {round.amount} TEST ZEC
+                      {
+                        round.amount
+                      }{" "}
+                      TEST ZEC
                     </p>
 
                     <p>
                       RESULT:{" "}
-                      {round.resultColor}
+                      {
+                        round.resultColor
+                      }
                     </p>
 
-                    <p className="history-block">
-                      BLOCK #
-                      {round.blockHeight ??
-                        "—"}
-                    </p>
-
-                    {round.blockHash && (
-                      <code className="history-hash">
-                        {round.blockHash.slice(
-                          0,
-                          18
-                        )}
-                        ...
-                      </code>
+                    {round.mode ===
+                    "DEMO" ? (
+                      <p className="history-block">
+                        DEMO ROUND •
+                        LOCAL RANDOM
+                      </p>
+                    ) : (
+                      <p className="history-block">
+                        BLOCK #
+                        {round.blockHeight ??
+                          "—"}
+                      </p>
                     )}
+
+                    {round.mode !==
+                      "DEMO" &&
+                      round.blockHash && (
+                        <code className="history-hash">
+                          {round.blockHash.slice(
+                            0,
+                            18
+                          )}
+                          ...
+                        </code>
+                      )}
 
                     <strong
                       className={
@@ -2083,13 +3193,18 @@ export default function Home() {
                         ? `WIN • +${round.amount} TEST ZEC`
                         : `LOSS • -${round.amount} TEST ZEC`}
                     </strong>
+
                   </div>
+
                 </div>
               )
             )}
+
           </div>
         )}
+
       </section>
+
     </main>
   );
 }
