@@ -2422,30 +2422,31 @@ export default function Home() {
   */
 
   function toggleDemoMode() {
-    if (
-      roundPhase !==
-      "BETTING"
-    ) {
-      return;
-    }
+  const canSwitchMode =
+    roundPhase === "BETTING" ||
+    roundPhase === "RESULT" ||
+    roundPhase === "MISSED";
 
-    setDemoMode(
-      (current) =>
-        !current
-    );
-
-    setSelectedBet(
-      null
-    );
-
-    setResult(null);
-
-    setOutcome(null);
-
-    setSourceState(
-      "READY"
-    );
+  if (!canSwitchMode) {
+    return;
   }
+
+  setDemoMode(
+    (current) => !current
+  );
+
+  setSelectedBet(null);
+  setResult(null);
+  setOutcome(null);
+  setSourceState("READY");
+
+  if (
+    roundPhase === "RESULT" ||
+    roundPhase === "MISSED"
+  ) {
+    startNewRound();
+  }
+}
 
   return (
     <main className="game">
@@ -2491,10 +2492,13 @@ export default function Home() {
                 onClick={
                   toggleDemoMode
                 }
-                disabled={
-                  roundPhase !==
-                  "BETTING"
-                }
+           disabled={
+  roundPhase === "LOCKING" ||
+  roundPhase === "WAITING" ||
+  roundPhase === "CONFIRMING" ||
+  roundPhase === "REORG_DETECTED" ||
+  roundPhase === "SPINNING"
+}
                 aria-label="Toggle Demo Mode"
                 aria-pressed={
                   demoMode
