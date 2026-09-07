@@ -346,46 +346,6 @@ input:focus-visible {
   border-color: rgba(241, 232, 212, 0.025);
 }
 
-.roulette-tableau {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  width: 100%;
-  height: 500px;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.roulette-croupier {
-  position: absolute;
-  right: -12px;
-  bottom: 10px;
-  z-index: 1;
-  width: 330px;
-  height: 495px;
-  pointer-events: none;
-  filter: drop-shadow(0 28px 28px rgba(0, 0, 0, 0.68));
-  transform-origin: 72% 76%;
-}
-
-.roulette-croupier-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center bottom;
-}
-
-.roulette-croupier.is-dealing {
-  animation: croupier-deal 3s cubic-bezier(0.2, 0.72, 0.18, 1);
-}
-
-@keyframes croupier-deal {
-  0%, 100% { transform: translate(0) rotate(0); }
-  22% { transform: translate(-11px, 7px) rotate(-1.8deg); }
-  48% { transform: translate(-5px, 2px) rotate(-0.7deg); }
-}
-
 .roulette-wrapper {
   --wheel-size: 410px;
   position: relative;
@@ -394,10 +354,6 @@ input:focus-visible {
   height: var(--wheel-size);
   flex: 0 0 var(--wheel-size);
   filter: drop-shadow(0 32px 50px rgba(0, 0, 0, 0.52));
-}
-
-.roulette-tableau .roulette-wrapper {
-  transform: translateX(-72px);
 }
 
 .roulette-pointer {
@@ -1120,15 +1076,6 @@ input:focus-visible {
   }
 
   .roulette-section { padding-right: 30px; }
-  .roulette-tableau { height: 460px; }
-  .roulette-tableau .roulette-wrapper { transform: translateX(-18px); }
-  .roulette-croupier {
-    top: 0;
-    right: -4px;
-    bottom: auto;
-    width: 240px;
-    height: 360px;
-  }
   .roulette-wrapper { --wheel-size: 360px; }
   .roulette-section::before { width: 490px; height: 490px; }
   .roulette-section::after { width: 540px; height: 540px; }
@@ -1176,21 +1123,6 @@ input:focus-visible {
   .roulette-section::after {
     left: 50%;
     transform: translateX(-50%);
-  }
-
-  .roulette-tableau {
-    width: min(100%, 660px);
-    height: 470px;
-  }
-
-  .roulette-tableau .roulette-wrapper { transform: translateX(-82px); }
-
-  .roulette-croupier {
-    top: auto;
-    right: 2px;
-    bottom: 6px;
-    width: 285px;
-    height: 428px;
   }
 
   .roulette-wrapper { --wheel-size: 390px; }
@@ -1265,19 +1197,8 @@ input:focus-visible {
   }
 
   .roulette-section {
-    min-height: 540px;
+    min-height: 490px;
     padding: 50px 0 42px;
-  }
-
-  .roulette-tableau { height: 400px; }
-  .roulette-tableau .roulette-wrapper { transform: none; }
-
-  .roulette-croupier {
-    top: -24px;
-    right: -2px;
-    bottom: auto;
-    width: 150px;
-    height: 225px;
   }
 
   .roulette-wrapper { --wheel-size: min(340px, calc(100vw - 52px)); }
