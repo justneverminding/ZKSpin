@@ -14,6 +14,9 @@
   --oxblood-bright: #a83a48;
   --emerald: #07543f;
   --emerald-bright: #178263;
+  --roulette-red: #9d2639;
+  --roulette-black: #101410;
+  --roulette-green: #087054;
   --danger: #b25858;
   --success: #62a987;
 }
@@ -493,20 +496,38 @@ input:focus-visible {
   justify-content: center;
   margin-top: -12.5px;
   margin-left: -12.5px;
-  border: 1px solid rgba(241, 232, 212, 0.13);
+  border: 1px solid rgba(241, 232, 212, 0.32);
   border-radius: 50%;
   color: #fff9e8;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  text-shadow: 0 1px 2px #000;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   transform-origin: center;
   transition: transform 200ms ease;
 }
 
-.roulette-number.red { background: rgba(87, 19, 29, 0.72); }
-.roulette-number.black { background: rgba(4, 6, 4, 0.72); }
-.roulette-number.green { background: rgba(3, 58, 43, 0.78); }
+.roulette-number.red {
+  border-color: rgba(242, 175, 174, 0.52);
+  background: #8f2033;
+  color: #fff4df;
+  box-shadow: 0 1px 5px rgba(49, 3, 12, 0.7);
+}
+
+.roulette-number.black {
+  border-color: rgba(224, 200, 143, 0.48);
+  background: #080b08;
+  color: #efd796;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.82);
+}
+
+.roulette-number.green {
+  border-color: rgba(231, 205, 139, 0.75);
+  background: #086349;
+  color: #fff1bd;
+  box-shadow: 0 1px 7px rgba(1, 43, 31, 0.8);
+}
 
 .roulette-number-text {
   display: block;
@@ -614,8 +635,9 @@ input:focus-visible {
   line-height: 1;
 }
 
-.spin-result.red > strong { color: #c85561; }
-.spin-result.green > strong { color: #42a982; }
+.spin-result.red > strong { color: #d45a69; }
+.spin-result.black > strong { color: var(--gold-bright); }
+.spin-result.green > strong { color: #4fbc91; }
 
 .spin-result em {
   display: block;
@@ -1008,9 +1030,23 @@ input:focus-visible {
   font-size: 15px;
 }
 
-.history-number.red { background: var(--oxblood); }
-.history-number.black { background: #181c18; }
-.history-number.green { background: var(--emerald); }
+.history-number.red {
+  border-color: rgba(212, 90, 105, 0.55);
+  background: #8f2033;
+  color: #fff4df;
+}
+
+.history-number.black {
+  border-color: rgba(224, 200, 143, 0.42);
+  background: #0a0d0a;
+  color: #efd796;
+}
+
+.history-number.green {
+  border-color: rgba(79, 188, 145, 0.55);
+  background: #086349;
+  color: #fff1bd;
+}
 
 .history-details {
   min-width: 0;

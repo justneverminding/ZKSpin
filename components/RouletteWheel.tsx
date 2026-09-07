@@ -15,9 +15,9 @@ const redNumbers = new Set([
 ]);
 
 const segmentColors = {
-  red: "#7d2430",
-  black: "#141815",
-  green: "#07543f",
+  red: "var(--roulette-red)",
+  black: "var(--roulette-black)",
+  green: "var(--roulette-green)",
 };
 
 function getNumberColor(number: number | "00"): keyof typeof segmentColors {
