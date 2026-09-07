@@ -1,8 +1,8 @@
-export type VerifiedRouletteResult =
+export type DerivedRouletteResult =
   | number
   | "00";
 
-const roulettePockets: VerifiedRouletteResult[] = [
+const roulettePockets: DerivedRouletteResult[] = [
   0,
   "00",
   1, 2, 3, 4, 5, 6,
@@ -12,10 +12,10 @@ const roulettePockets: VerifiedRouletteResult[] = [
   25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
 ];
 
-export async function verifyBlockHash(
+export async function deriveRouletteResult(
   blockHash: string
-): Promise<VerifiedRouletteResult | null> {
-  if (!/^[0-9a-fA-F]+$/.test(blockHash)) {
+): Promise<DerivedRouletteResult | null> {
+  if (!/^[0-9a-fA-F]{64}$/.test(blockHash)) {
     return null;
   }
 
@@ -59,16 +59,16 @@ export async function verifyBlockHash(
    */
 
   for (let i = 0; i < bytes.length; i++) {
-  const value = bytes[i];
+    const value = bytes[i];
 
-  if (value > 227) {
-    continue;
+    if (value > 227) {
+      continue;
+    }
+
+    const group = Math.floor(value / 6);
+
+    return roulettePockets[group];
   }
-
-  const group = Math.floor(value / 6);
-
-  return roulettePockets[group];
-}
 
   return null;
 }

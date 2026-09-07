@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
+import {
+  fetchCipherScan,
+  isBlockHash,
+  isBlockHeight,
+  isRecord,
+  isTimeoutError,
+  readJson,
+} from "../../../lib/cipherScan";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const CIPHERSCAN_URL =
-  "https://api.testnet.cipherscan.app/api/blockchain-info";
+const responseHeaders = {
+  "Cache-Control": "no-store",
+};
 
 export async function GET() {
   try {
-    const response = await fetch(
-      CIPHERSCAN_URL,
-      {
-        cache: "no-store",
-      }
+    const response = await fetchCipherScan(
+      "/api/blockchain-info"
     );
 
     if (!response.ok) {
@@ -22,70 +28,100 @@ export async function GET() {
         response.statusText
       );
 
-      return NextResponse.json({
-        network: "testnet",
-        connected: false,
-        height: null,
-        bestBlockHash: null,
-        source: "CipherScan",
-        error: `CipherScan returned HTTP ${response.status}`,
-      });
+      return NextResponse.json(
+        {
+          network: "testnet",
+          connected: false,
+          height: null,
+          bestBlockHash: null,
+          source: "CipherScan",
+          error: `CipherScan returned HTTP ${response.status}`,
+        },
+        {
+          status: 502,
+          headers: responseHeaders,
+        }
+      );
     }
 
     const data =
-      await response.json();
+      await readJson(response);
 
     const height =
-      typeof data?.blocks ===
-      "number"
+      isRecord(data) &&
+      isBlockHeight(data.blocks)
         ? data.blocks
         : null;
 
     const bestBlockHash =
-      typeof data?.bestblockhash ===
-      "string"
+      isRecord(data) &&
+      isBlockHash(data.bestblockhash)
         ? data.bestblockhash
         : null;
 
-    if (height === null) {
+    if (
+      height === null ||
+      bestBlockHash === null
+    ) {
       console.error(
         "CipherScan returned unexpected status data:",
         data
       );
 
-      return NextResponse.json({
-        network: "testnet",
-        connected: false,
-        height: null,
-        bestBlockHash: null,
-        source: "CipherScan",
-        error:
-          "CipherScan returned invalid blockchain data",
-      });
+      return NextResponse.json(
+        {
+          network: "testnet",
+          connected: false,
+          height: null,
+          bestBlockHash: null,
+          source: "CipherScan",
+          error:
+            "CipherScan returned invalid blockchain data",
+        },
+        {
+          status: 502,
+          headers: responseHeaders,
+        }
+      );
     }
 
-    return NextResponse.json({
-      network: "testnet",
-      connected: true,
-      height,
-      bestBlockHash,
-      source: "CipherScan",
-      error: null,
-    });
+    return NextResponse.json(
+      {
+        network: "testnet",
+        connected: true,
+        height,
+        bestBlockHash:
+          bestBlockHash.toLowerCase(),
+        source: "CipherScan",
+        error: null,
+      },
+      {
+        headers: responseHeaders,
+      }
+    );
   } catch (error) {
     console.error(
       "CipherScan status error:",
       error
     );
 
-    return NextResponse.json({
-      network: "testnet",
-      connected: false,
-      height: null,
-      bestBlockHash: null,
-      source: "CipherScan",
-      error:
-        "Unable to reach CipherScan",
-    });
+    return NextResponse.json(
+      {
+        network: "testnet",
+        connected: false,
+        height: null,
+        bestBlockHash: null,
+        source: "CipherScan",
+        error: isTimeoutError(error)
+          ? "CipherScan request timed out"
+          : "Unable to reach CipherScan",
+      },
+      {
+        status: isTimeoutError(error)
+          ? 504
+          : 502,
+        headers: responseHeaders,
+      }
+    );
   }
 }

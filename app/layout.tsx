@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "ZKSpin — Zero Knowledge Roulette",
-  description: "A privacy-focused roulette experience inspired by zero knowledge technology.",
+  title: "ZKSpin - Zcash Testnet Block Roulette",
+  description: "A test-credit roulette demo with deterministic results derived from CipherScan-reported Zcash testnet block hashes.",
 };
 
 export default function RootLayout({

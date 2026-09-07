@@ -8,25 +8,15 @@ import {
 } from "react";
 
 import RouletteWheel from "../components/RouletteWheel";
-import { verifyBlockHash } from "../lib/rouletteVerifier";
-
-type RouletteResult = number | "00";
-
-type BetType =
-  | "RED"
-  | "BLACK"
-  | "ODD"
-  | "EVEN";
-
-type RoundPhase =
-  | "BETTING"
-  | "LOCKING"
-  | "WAITING"
-  | "CONFIRMING"
-  | "REORG_DETECTED"
-  | "SPINNING"
-  | "RESULT"
-  | "MISSED";
+import { deriveRouletteResult } from "../lib/rouletteVerifier";
+import {
+  parseStoredState,
+  type BetType,
+  type HistoryEntry,
+  type RouletteResult,
+  type RoundPhase,
+  type StoredState,
+} from "../lib/rouletteState";
 
 type SourceState =
   | "READY"
@@ -34,124 +24,7 @@ type SourceState =
   | "SOURCE_LAG"
   | "SOURCE_UNAVAILABLE"
   | "CONFIRMING"
-  | "VERIFIED";
-
-type RoundMode =
-  | "BLOCKCHAIN"
-  | "DEMO";
-
-type HistoryEntry = {
-  result: RouletteResult;
-
-  resultColor:
-    | "RED"
-    | "BLACK"
-    | "GREEN";
-
-  bet: BetType;
-
-  amount: number;
-
-  outcome:
-    | "WIN"
-    | "LOSS";
-
-  blockHeight:
-    | number
-    | null;
-
-  blockHash:
-    | string
-    | null;
-
-  timestamp: number;
-
-  mode: RoundMode;
-};
-
-type StoredState = {
-  version: 3;
-
-  demoMode: boolean;
-
-  roundPhase:
-    RoundPhase;
-
-  betAmount: string;
-
-  balance: number;
-
-  targetBlockHeight:
-    | number
-    | null;
-
-  roundBlockHash:
-    | string
-    | null;
-
-  roundVerifiedPocket:
-    | RouletteResult
-    | null;
-
-  roundBet:
-    | BetType
-    | null;
-
-  roundWager:
-    | number
-    | null;
-
-  selectedBet:
-    | BetType
-    | null;
-
-  result:
-    | RouletteResult
-    | null;
-
-  outcome:
-    | "WIN"
-    | "LOSS"
-    | null;
-
-  history:
-    HistoryEntry[];
-
-  bettingEndsAt:
-    | number
-    | null;
-
-  waitingStartedAt:
-    | number
-    | null;
-
-  resultEndsAt:
-    | number
-    | null;
-
-  roundSettled:
-    boolean;
-
-  confirmationDepth:
-    number;
-
-  sourceTipHeight:
-    | number
-    | null;
-
-  pollAttempts:
-    number;
-
-  sourceErrors:
-    number;
-
-  reorgCount:
-    number;
-
-  blockFoundAt:
-    | number
-    | null;
-};
+  | "DERIVED";
 
 const BETTING_SECONDS =
   30;
@@ -169,7 +42,7 @@ const DEMO_DELAY_MS =
   1000;
 
 const STORAGE_KEY =
-  "zkspin-demo-state-v3";
+  "zkspin-demo-state-v4";
 
 const wheelNumbers:
   RouletteResult[] = [
@@ -347,6 +220,16 @@ function formatHistoryTime(
         "2-digit",
     }
   );
+}
+
+function removeStoredState() {
+  try {
+    window.localStorage.removeItem(
+      STORAGE_KEY
+    );
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
 }
 
 export default function Home() {
@@ -611,6 +494,9 @@ export default function Home() {
   const demoSpinInFlightRef =
     useRef(false);
 
+  const spinSubmissionInFlightRef =
+    useRef(false);
+
   const wagerAmount =
     Number(
       betAmount
@@ -740,17 +626,30 @@ export default function Home() {
 
       demoSpinInFlightRef.current =
         false;
+
+      spinSubmissionInFlightRef.current =
+        false;
     }, []);
 
   /*
     RESTORE LOCAL STATE
   */
 
+  /* Local storage is an external system restored once after client mount. */
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const raw =
-      window.localStorage.getItem(
-        STORAGE_KEY
-      );
+    let raw: string | null;
+
+    try {
+      raw =
+        window.localStorage.getItem(
+          STORAGE_KEY
+        );
+    } catch {
+      startNewRound();
+      setHydrated(true);
+      return;
+    }
 
     if (!raw) {
       startNewRound();
@@ -764,20 +663,13 @@ export default function Home() {
 
     try {
       const saved =
-        JSON.parse(
-          raw
-        ) as Partial<StoredState>;
+        parseStoredState(raw);
 
       const now =
         Date.now();
 
-      if (
-        saved.version !==
-        3
-      ) {
-        window.localStorage.removeItem(
-          STORAGE_KEY
-        );
+      if (!saved) {
+        removeStoredState();
 
         startNewRound();
 
@@ -1008,7 +900,7 @@ export default function Home() {
         setSourceState(
           saved.demoMode
             ? "READY"
-            : "VERIFIED"
+            : "DERIVED"
         );
 
         setResultEndsAt(
@@ -1082,9 +974,7 @@ export default function Home() {
         true
       );
     } catch {
-      window.localStorage.removeItem(
-        STORAGE_KEY
-      );
+      removeStoredState();
 
       startNewRound();
 
@@ -1095,6 +985,7 @@ export default function Home() {
   }, [
     startNewRound,
   ]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   /*
     SAVE STATE
@@ -1130,7 +1021,7 @@ export default function Home() {
     const state:
       StoredState =
       {
-        version: 3,
+        version: 4,
 
         demoMode,
 
@@ -1179,12 +1070,19 @@ export default function Home() {
         blockFoundAt,
       };
 
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(
-        state
-      )
-    );
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(
+          state
+        )
+      );
+    } catch (error) {
+      console.warn(
+        "Unable to persist local test state:",
+        error
+      );
+    }
   }, [
     hydrated,
     demoMode,
@@ -1289,13 +1187,16 @@ export default function Home() {
       return;
     }
 
+    const activeBettingDeadline =
+      bettingEndsAt;
+
     function updateTimer() {
       const remaining =
         Math.max(
           0,
           Math.ceil(
             (
-              bettingEndsAt -
+              activeBettingDeadline -
               Date.now()
             ) /
               1000
@@ -1349,15 +1250,40 @@ export default function Home() {
       return;
     }
 
-    setRoundPhase(
+    const transitionTimer =
+      window.setTimeout(
+        () => {
+          setRoundPhase(
+            "MISSED"
+          );
+
+          setBettingEndsAt(
+            null
+          );
+        },
+        0
+      );
+
+    return () => {
+      window.clearTimeout(
+        transitionTimer
+      );
+    };
+  }, [
+    hydrated,
+    roundPhase,
+    bettingTimeLeft,
+  ]);
+
+  useEffect(() => {
+    if (
+      roundPhase !==
       "MISSED"
-    );
+    ) {
+      return;
+    }
 
-    setBettingEndsAt(
-      null
-    );
-
-    const timer =
+    const restartTimer =
       window.setTimeout(
         startNewRound,
         3000
@@ -1365,13 +1291,11 @@ export default function Home() {
 
     return () => {
       window.clearTimeout(
-        timer
+        restartTimer
       );
     };
   }, [
-    hydrated,
     roundPhase,
-    bettingTimeLeft,
     startNewRound,
   ]);
 
@@ -1396,6 +1320,9 @@ export default function Home() {
       return;
     }
 
+    const activeWaitingStart =
+      waitingStartedAt;
+
     function updateWait() {
       setWaitingSeconds(
         Math.max(
@@ -1403,7 +1330,7 @@ export default function Home() {
           Math.floor(
             (
               Date.now() -
-              waitingStartedAt
+              activeWaitingStart
             ) /
               1000
           )
@@ -1447,18 +1374,13 @@ export default function Home() {
       resultEndsAt -
       Date.now();
 
-    if (
-      remaining <= 0
-    ) {
-      startNewRound();
-
-      return;
-    }
-
     const timer =
       window.setTimeout(
         startNewRound,
-        remaining
+        Math.max(
+          0,
+          remaining
+        )
       );
 
     return () => {
@@ -1699,11 +1621,11 @@ export default function Home() {
           true;
 
         setSourceState(
-          "VERIFIED"
+          "DERIVED"
         );
 
         const pocket =
-          await verifyBlockHash(
+          await deriveRouletteResult(
             observedHash
           );
 
@@ -1886,7 +1808,7 @@ export default function Home() {
             );
 
             setSourceState(
-              "VERIFIED"
+              "DERIVED"
             );
 
             resolvingBlockRef.current =
@@ -2213,6 +2135,12 @@ export default function Home() {
       );
 
     if (
+      spinSubmissionInFlightRef.current
+    ) {
+      return;
+    }
+
+    if (
       !bettingOpen
     ) {
       return;
@@ -2236,15 +2164,35 @@ export default function Home() {
       return;
     }
 
+    spinSubmissionInFlightRef.current =
+      true;
+
     /*
       DEMO PATH
     */
 
     if (demoMode) {
-      await runDemoSpin(
-        wager,
-        selectedBet
-      );
+      try {
+        await runDemoSpin(
+          wager,
+          selectedBet
+        );
+      } catch (error) {
+        console.error(
+          "Demo spin failed:",
+          error
+        );
+
+        setBalance(
+          (current) =>
+            current + wager
+        );
+
+        spinSubmissionInFlightRef.current =
+          false;
+
+        startNewRound();
+      }
 
       return;
     }
@@ -2271,9 +2219,14 @@ export default function Home() {
         await response.json();
 
       if (
+        !response.ok ||
         !data.connected ||
         typeof data.height !==
-          "number"
+          "number" ||
+        !Number.isSafeInteger(
+          data.height
+        ) ||
+        data.height < 0
       ) {
         setTestnetConnected(
           false
@@ -2282,6 +2235,9 @@ export default function Home() {
         setRoundPhase(
           "BETTING"
         );
+
+        spinSubmissionInFlightRef.current =
+          false;
 
         return;
       }
@@ -2408,6 +2364,9 @@ export default function Home() {
       setRoundPhase(
         "BETTING"
       );
+
+      spinSubmissionInFlightRef.current =
+        false;
     }
   }
 
@@ -2459,7 +2418,7 @@ export default function Home() {
           </h1>
 
           <p className="subtitle">
-            Zero Knowledge Roulette
+            Zcash Testnet Block Roulette
           </p>
         </div>
 
@@ -2526,7 +2485,7 @@ export default function Home() {
             </span>
 
             <strong>
-              {balance} TEST ZEC
+              {balance} TEST CREDITS
             </strong>
           </div>
 
@@ -2534,8 +2493,8 @@ export default function Home() {
 
             <span>
               {demoMode
-                ? "DEMO MODE • LOCAL RANDOM"
-                : `ZCASH TESTNET • ${
+                ? "DEMO MODE • LOCAL PSEUDORANDOM"
+                : `CIPHERSCAN • ${
                     testnetConnected
                       ? "CONNECTED"
                       : "OFFLINE"
@@ -2544,7 +2503,7 @@ export default function Home() {
 
             <strong>
               {demoMode
-                ? "BLOCKCHAIN VERIFICATION BYPASSED"
+                ? "CIPHERSCAN NOT USED"
                 : `BLOCK: ${
                     blockHeight ??
                     "—"
@@ -2658,7 +2617,7 @@ export default function Home() {
         ) : roundPhase ===
           "SPINNING" ? (
           <p className="wheel-label">
-            BLOCK VERIFIED —
+            SOURCE CONFIRMED —
             SPINNING...
           </p>
         ) : roundPhase ===
@@ -2716,12 +2675,12 @@ export default function Home() {
           <span>
             {demoMode
               ? "DEMO ROUND"
-              : "BLOCKCHAIN VERIFICATION"}
+              : "BLOCK-HASH DERIVATION"}
           </span>
 
           <strong>
             {demoMode
-              ? "LOCAL RANDOM"
+              ? "LOCAL PSEUDORANDOM"
               : sourceState ===
                 "SOURCE_LAG"
               ? "SYNCING"
@@ -2743,7 +2702,7 @@ export default function Home() {
                   "SPINNING" ||
                 roundPhase ===
                   "RESULT"
-              ? "VERIFIED"
+              ? "SOURCE CONFIRMED"
               : "READY"}
           </strong>
 
@@ -2754,17 +2713,29 @@ export default function Home() {
           <span>
             {demoMode
               ? "Result Source"
-              : "Locked Block"}
+              : "Trusted Data Source"}
           </span>
 
           <strong>
             {demoMode
-              ? "LOCAL RANDOM"
-              : targetBlockHeight ??
-                "—"}
+              ? "LOCAL PSEUDORANDOM"
+              : "CIPHERSCAN API"}
           </strong>
 
         </div>
+
+        {!demoMode && (
+          <div className="verification-row">
+            <span>
+              Locked Block
+            </span>
+
+            <strong>
+              {targetBlockHeight ??
+                "—"}
+            </strong>
+          </div>
+        )}
 
         <div className="verification-row">
 
@@ -2791,7 +2762,7 @@ export default function Home() {
         <div className="verification-row">
 
           <span>
-            Confirmation
+            Source Confirmations
           </span>
 
           <strong>
@@ -2812,7 +2783,7 @@ export default function Home() {
           <span>
             {demoMode
               ? "Demo Pocket"
-              : "Verified Pocket"}
+              : "Derived Pocket"}
           </span>
 
           <strong>
@@ -2873,7 +2844,7 @@ export default function Home() {
                 "SPINNING"
               ? demoMode
                 ? "DEMO SPIN"
-                : "BLOCK VERIFIED"
+                : "SOURCE CONFIRMED"
               : roundPhase ===
                 "RESULT"
               ? "ROUND COMPLETE"
@@ -2952,7 +2923,7 @@ export default function Home() {
             />
 
             <span>
-              TEST ZEC
+              TEST CREDITS
             </span>
 
             <button
@@ -3148,7 +3119,7 @@ export default function Home() {
                       {
                         round.amount
                       }{" "}
-                      TEST ZEC
+                      TEST CREDITS
                     </p>
 
                     <p>
@@ -3162,7 +3133,7 @@ export default function Home() {
                     "DEMO" ? (
                       <p className="history-block">
                         DEMO ROUND •
-                        LOCAL RANDOM
+                        LOCAL PSEUDORANDOM
                       </p>
                     ) : (
                       <p className="history-block">
@@ -3194,8 +3165,8 @@ export default function Home() {
                     >
                       {round.outcome ===
                       "WIN"
-                        ? `WIN • +${round.amount} TEST ZEC`
-                        : `LOSS • -${round.amount} TEST ZEC`}
+                        ? `WIN • +${round.amount} TEST CREDITS`
+                        : `LOSS • -${round.amount} TEST CREDITS`}
                     </strong>
 
                   </div>
