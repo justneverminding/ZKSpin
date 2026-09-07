@@ -375,9 +375,10 @@ button:disabled {
 
 .roulette-section::before {
   position: absolute;
-  inset: 52px 50%;
-  width: 560px;
-  height: 560px;
+  top: 37px;
+  left: 50%;
+  width: 384px;
+  height: 384px;
   transform: translateX(-50%);
   border: 1px solid var(--line);
   border-radius: 50%;
@@ -617,8 +618,6 @@ button:disabled {
 }
 
 .roulette-center {
-  position: relative;
-
   width: 78px;
   height: 78px;
 
@@ -629,27 +628,15 @@ button:disabled {
   border: 1px solid var(--ink);
   border-radius: 50%;
 
-  background: var(--paper);
+  background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11.5' fill='%23F3B724'/%3E%3Cpath fill='%231C1B19' d='M10.992 4.418h2.014v2.014l3.275-.002v1.826l-5.08 6.889h5.08v2.423h-3.275v2.006h-2.012v-2.006H7.72v-1.826l5.074-6.888H7.719V6.432h3.273V4.418z'/%3E%3C/svg%3E") no-repeat center / cover;
 
-  color: var(--ink);
+  color: transparent;
 
-  font-family: var(--serif);
-  font-size: 20px;
-  letter-spacing: 0.04em;
+  font-size: 0;
 
   box-shadow:
     0 3px 0 rgba(28, 27, 25, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-
-.roulette-center::before {
-  position: absolute;
-  inset: 6px;
-
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-
-  content: "";
+    inset 0 0 0 1px rgba(243, 183, 36, 0.55);
 }
 
 .wheel-label {
@@ -1603,8 +1590,11 @@ input:focus-visible {
   }
 
   .roulette-section::before {
-    width: 470px;
-    height: 470px;
+    top: 23px;
+    left: 50%;
+    width: 384px;
+    height: 384px;
+    transform: translateX(-50%);
   }
 
   .roulette-number {
