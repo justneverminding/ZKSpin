@@ -220,36 +220,12 @@ button:disabled {
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-
   color: var(--text);
 
   font-family: "Space Grotesk", Inter, ui-sans-serif, sans-serif;
   font-size: 22px;
   font-weight: 600;
   letter-spacing: 0.12em;
-}
-
-.brand::before {
-  display: inline-block;
-
-  width: 11px;
-  height: 11px;
-
-  margin-right: 12px;
-
-  transform: rotate(45deg);
-
-  border-radius: 3px;
-
-  background: linear-gradient(145deg, var(--accent-bright), var(--accent));
-
-  box-shadow:
-    0 0 12px var(--accent-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-
-  content: "";
 }
 
 .subtitle {
@@ -1722,11 +1698,6 @@ input:focus-visible {
   .brand {
     font-size: 18px;
     letter-spacing: 0.1em;
-  }
-
-  .brand::before {
-    width: 9px;
-    height: 9px;
   }
 
   .subtitle {
