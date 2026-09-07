@@ -2412,14 +2412,20 @@ export default function Home() {
 
       <header className="topbar">
 
-        <div>
-          <h1 className="brand">
-            ZKSPIN
-          </h1>
+        <div className="brand-lockup">
+          <div className="brand-seal" aria-hidden="true">
+            <span>ZK</span>
+          </div>
 
-          <p className="subtitle">
-            Zcash Testnet Block Roulette
-          </p>
+          <div>
+            <h1 className="brand">
+              ZKSPIN
+            </h1>
+
+            <p className="subtitle">
+              Zcash Testnet Block Roulette
+            </p>
+          </div>
         </div>
 
         <div className="topbar-info">
@@ -2489,7 +2495,15 @@ export default function Home() {
             </strong>
           </div>
 
-          <div className="network-status">
+          <div
+            className={`network-status ${
+              demoMode
+                ? "demo"
+                : testnetConnected
+                ? "online"
+                : "offline"
+            }`}
+          >
 
             <span>
               {demoMode
@@ -2624,7 +2638,12 @@ export default function Home() {
             "RESULT" &&
           result !==
             null ? (
-          <div className="spin-result">
+          <div
+            className={`spin-result ${getResultColor(
+              result
+            ).toLowerCase()}`}
+            aria-live="polite"
+          >
 
             <span>
               RESULT
@@ -2648,7 +2667,7 @@ export default function Home() {
 
             {outcome !==
               null && (
-              <p className="round-outcome">
+              <p className={`round-outcome ${outcome.toLowerCase()}`}>
                 {outcome}
               </p>
             )}
@@ -2880,6 +2899,8 @@ export default function Home() {
           <div className="amount-control">
 
             <button
+              type="button"
+              aria-label="Decrease bet amount"
               onClick={() =>
                 setBetAmount(
                   (current) =>
@@ -2927,6 +2948,8 @@ export default function Home() {
             </span>
 
             <button
+              type="button"
+              aria-label="Increase bet amount"
               onClick={() =>
                 setBetAmount(
                   (current) =>
@@ -2972,6 +2995,7 @@ export default function Home() {
                 bet
               ) => (
                 <button
+                  type="button"
                   key={
                     bet
                   }
@@ -2980,6 +3004,11 @@ export default function Home() {
                     bet
                       ? "selected"
                       : ""
+                  }
+                  data-bet={bet}
+                  aria-pressed={
+                    selectedBet ===
+                    bet
                   }
                   onClick={() =>
                     setSelectedBet(
@@ -3000,6 +3029,7 @@ export default function Home() {
         </div>
 
         <button
+          type="button"
           className="spin-button"
           onClick={
             handleSpin
