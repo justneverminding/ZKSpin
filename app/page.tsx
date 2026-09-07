@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -2532,14 +2533,36 @@ export default function Home() {
 
       <section className="roulette-section">
 
-        <RouletteWheel
-          rotation={
-            rotation
-          }
-          spinning={
-            spinning
-          }
-        />
+        <div className="roulette-tableau">
+
+          <div
+            className={`roulette-croupier ${
+              spinning
+                ? "is-dealing"
+                : ""
+            }`}
+          >
+            <Image
+              className="roulette-croupier-image"
+              src="/images/zebra-croupier.png"
+              alt="Zebra croupier presenting the roulette wheel"
+              width={1024}
+              height={1536}
+              sizes="(max-width: 620px) 150px, (max-width: 1080px) 240px, 330px"
+              preload
+            />
+          </div>
+
+          <RouletteWheel
+            rotation={
+              rotation
+            }
+            spinning={
+              spinning
+            }
+          />
+
+        </div>
 
         {demoMode &&
         roundPhase ===
