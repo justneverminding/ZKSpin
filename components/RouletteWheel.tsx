@@ -14,13 +14,7 @@ const redNumbers = new Set([
   19, 21, 23, 25, 27, 30, 32, 34, 36
 ]);
 
-const segmentColors = {
-  red: "var(--roulette-red)",
-  black: "var(--roulette-black)",
-  green: "var(--roulette-green)",
-};
-
-function getNumberColor(number: number | "00"): keyof typeof segmentColors {
+function getNumberColor(number: number | "00") {
   if (number === 0 || number === "00") {
     return "green";
   }
@@ -39,34 +33,21 @@ export default function RouletteWheel({
   rotation = 0,
   spinning = false,
 }: RouletteWheelProps) {
-  const segmentAngle = 360 / wheelNumbers.length;
-  const wheelSegments = `conic-gradient(from ${-segmentAngle / 2}deg, ${wheelNumbers
-    .map((number, index) => {
-      const color = segmentColors[getNumberColor(number)];
-      return `${color} ${index * segmentAngle}deg ${(index + 1) * segmentAngle}deg`;
-    })
-    .join(", ")})`;
-
   return (
-    <div
-      className="roulette-wrapper"
-      aria-hidden="true"
-    >
+    <div className="roulette-wrapper">
 
       <div className="roulette-pointer" />
-      <div className={`roulette-ball ${spinning ? "in-motion" : ""}`} />
 
       <div
-        className={`roulette-wheel ${spinning ? "spinning" : ""}`}
-        style={{
-          background: `radial-gradient(circle, #07100c 0 39%, transparent 39.5% 72%, rgba(255, 255, 255, 0.04) 72.5%), ${wheelSegments}`,
-          transform: `rotate(${rotation}deg)`,
-        }}
-      >
+  className={`roulette-wheel ${spinning ? "spinning" : ""}`}
+  style={{
+    transform: `rotate(${rotation}deg)`,
+  }}
+>
 
         {wheelNumbers.map((number, index) => {
           const pocketRotation =
-            segmentAngle * index;
+  (360 / wheelNumbers.length) * index;
 
           const color = getNumberColor(number);
 
@@ -75,28 +56,24 @@ export default function RouletteWheel({
               key={number}
               className={`roulette-number ${color}`}
               style={{
-                transform: `rotate(${pocketRotation}deg) translateY(calc(var(--wheel-size) * -0.43))`
+                transform: `rotate(${pocketRotation}deg) translateY(-145px)`
               }}
             >
-              <span
-                className="roulette-number-text"
-                style={{
-                  transform: `rotate(${-pocketRotation - rotation}deg)`
-                }}
-              >
-                {number}
-              </span>
+           <span
+  className="roulette-number-text"
+  style={{
+    transform: `rotate(${-pocketRotation - rotation}deg)`
+  }}
+>
+  {number}
+</span>
             </div>
           );
         })}
 
         <div className="roulette-inner">
-          <div
-            className="roulette-center"
-            style={{ transform: `rotate(${-rotation}deg)` }}
-          >
-            <span>ZK</span>
-            <small>TESTNET</small>
+          <div className="roulette-center">
+            ZK
           </div>
         </div>
 
