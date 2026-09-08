@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, CircleDot, Fingerprint, Layers3, MoveUpRight, Network, ScanLine, ShieldCheck, Sparkles, Timer } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, CircleDot, Fingerprint, Layers3, MoveUpRight, Network, ScanLine, ShieldCheck } from "lucide-react";
 import RoulettePreview from "../components/RoulettePreview";
 import HomeMotion from "../components/HomeMotion";
 import s from "./home.module.css";
@@ -89,19 +89,12 @@ export default function Home() {
         <div className={s.trustLine}><ShieldCheck size={22} /><p>Clarity over claims.<span>Simulated balances. Inspectable math. No mainnet or real-money payouts.</span></p></div>
       </section>
 
-      <section className={s.film}>
-        <Image src="/images/roulette-hero.webp" alt="Close-up of the roulette ball on its polished metal track" fill sizes="100vw" className={s.filmImage} />
-        <div><p className={s.eyebrow}>PRECISION MEETS POSSIBILITY</p><h2>Every spin<br />is a moment.</h2></div><span className={s.filmLabel}>ZK SPIN / A CLOSER LOOK</span>
-      </section>
-
-      <section className={`${s.section} ${s.why}`} data-home-reveal><div><p className={s.eyebrow}>THE DETAILS MAKE THE DIFFERENCE</p><h2>A little less friction.<br /><span>A lot more focus.</span></h2></div><div className={s.whyList}><article><Sparkles size={20} /><div><h3>Beautifully simple.</h3><p>A focused table, readable history, and the controls you need.</p></div></article><article><Timer size={20} /><div><h3>Your pace, your choice.</h3><p>Quick local rounds or the anticipation of a new testnet block.</p></div></article><article><ScanLine size={20} /><div><h3>More than a number.</h3><p>Every saved round opens into its wager, outcome, and available calculation.</p></div></article></div></section>
-
       <section className={`${s.section} ${s.faq}`} data-home-reveal><div><p className={s.eyebrow}>BEFORE YOU GO IN</p><h2>A few good questions.</h2></div><div>
         <details><summary>Not sure where to start?</summary><p>Choose Demo to learn the table without waiting for block data. Choose Testnet to explore block-derived outcomes. You can switch modes between rounds.</p><div className={s.actions}><Link href="/play" className={s.textLink}>Play Demo <ArrowUpRight size={16} /></Link><Link href="/play" className={s.textLink}>Enter Testnet <ArrowUpRight size={16} /></Link></div></details>
         <details><summary>Is the ZEC balance real money?</summary><p>No. ZEC on this page of the game represents simulated credit. There are no deposits, withdrawals, or spendable token payouts.</p></details>
         <details><summary>How do wins and zero pockets work?</summary><p>Red, black, odd, and even bets pay 1:1 when they win. Both 0 and 00 lose these bets. A win returns twice the wager including the original stake.</p></details>
         <details><summary>What can I verify?</summary><p>Testnet results show the saved block hash and each calculation step. New demo rounds include the original local random draw; older demo rounds may not. Demo draws are not blockchain-verifiable.</p></details>
-        <details><summary>Why can Testnet take longer?</summary><p>It waits for the target block and one source-reported confirmation. Block production and data-source delays can affect the wait.</p></details>
+        <details><summary>Why does Testnet take longer?</summary><p>It waits for the target block and one source-reported confirmation. Block production and data-source delays can affect the wait.</p></details>
       </div></section>
 
       <section className={s.closing} data-home-reveal><CircleDot className={s.closingIcon} size={38} strokeWidth={1} /><p className={s.eyebrow}>CURIOSITY BROUGHT YOU HERE</p><h2>The wheel is waiting.</h2><p>Choose your experience. Step into ZK Spin.</p><Link className={s.primary} href="/play">{play}</Link><div className={s.closingModes}><Link href="/play">Demo</Link><span>/</span><Link href="/play">Testnet</Link></div></section>

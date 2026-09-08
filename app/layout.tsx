@@ -1,4 +1,5 @@
 import "./globals.css";
+import CasinoSound from "../components/CasinoSound";
 
 export const metadata = {
   title: "ZKSpin - Zcash Testnet Block Roulette",
@@ -12,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><CasinoSound>{children}</CasinoSound></body>
     </html>
   );
 }

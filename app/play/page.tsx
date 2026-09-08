@@ -11,6 +11,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronRight, Minus, Plus } from "lucide-react";
 import RouletteWheel from "../../components/RouletteWheel";
 import ResultCalculation from "../../components/ResultCalculation";
+import { useCasinoSound } from "../../components/CasinoSound";
 import { deriveRouletteResult } from "../../lib/rouletteVerifier";
 import {
   parseStoredState,
@@ -236,6 +237,7 @@ function removeStoredState() {
 }
 
 export default function Home() {
+  const { play: playSound } = useCasinoSound();
   const [calculationRound, setCalculationRound] = useState<HistoryEntry | null>(null);
   const [
     hydrated,
@@ -526,6 +528,14 @@ export default function Home() {
   const spinning =
     roundPhase ===
     "SPINNING";
+
+  const previousPhase = useRef(roundPhase);
+  useEffect(() => {
+    if (previousPhase.current === "SPINNING" && roundPhase === "RESULT" && outcome) {
+      playSound(outcome === "WIN" ? "win" : "loss");
+    }
+    previousPhase.current = roundPhase;
+  }, [roundPhase, outcome, playSound]);
 
   /*
     START FRESH ROUND
@@ -2951,11 +2961,10 @@ export default function Home() {
                       ? "selected"
                       : ""
                   }
-                  onClick={() =>
-                    setSelectedBet(
-                      bet
-                    )
-                  }
+                  onClick={() => {
+                    setSelectedBet(bet);
+                    playSound("chip");
+                  }}
                   disabled={
                     !bettingOpen
                   }

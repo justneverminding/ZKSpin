@@ -173,3 +173,6 @@ button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visibl
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Keep the persistent sound controls clear of the final game section. */
+.game { padding-bottom: 100px; }

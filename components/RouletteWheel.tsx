@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useEffect, useId } from "react";
+import { useCasinoSound } from "./CasinoSound";
 
 const wheelNumbers = [0, 28, 9, 26, 30, 11, 7, 20, 32, 17, 5, 22, 34, 15, 3, 24, 36, 13, 1, "00", 27, 10, 25, 29, 12, 8, 19, 31, 18, 6, 21, 33, 16, 4, 23, 35, 14, 2] as const;
 const redNumbers = new Set<number>([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -18,6 +19,10 @@ function pocketPath(index: number, outer: number, inner: number) {
 
 export default function RouletteWheel({ rotation = 0, spinning = false }: { rotation?: number; spinning?: boolean }) {
   const id = useId().replace(/:/g, "");
+  const { play } = useCasinoSound();
+  useEffect(() => {
+    if (spinning) return play("spin");
+  }, [spinning, play]);
   return <div className="roulette-wrapper" role="img" aria-label="American roulette wheel with 38 pockets">
     <svg className={`roulette-wheel ${spinning ? "spinning" : ""}`} viewBox="0 0 700 700" style={{ transform: `rotate(${rotation}deg)` }} aria-hidden="true">
       <defs>
