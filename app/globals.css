@@ -27,7 +27,8 @@
   cursor: pointer;
 }
 
-.history-number { cursor: pointer; }
+.history-item[role="button"] { cursor: pointer; }
+.history-item[role="button"]:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
 .calculation-dialog {
   width: min(620px, calc(100% - 32px));
   max-height: calc(100dvh - 48px);
@@ -36,16 +37,16 @@
   overflow-y: auto;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: var(--ink-soft);
-  color: var(--ivory);
+  background: var(--paper);
+  color: var(--ink);
 }
 .calculation-dialog::backdrop { background: rgba(0, 0, 0, 0.75); }
 .calculation-dialog header { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
 .calculation-dialog h2 { font-size: 20px; }
 .calculation-dialog header button { flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--line); background: transparent; color: inherit; font-size: 26px; cursor: pointer; }
-.calculation-dialog p { margin-top: 18px; font-size: 14px; line-height: 1.65; color: var(--ivory-muted); }
-.calculation-dialog code { overflow-wrap: anywhere; color: var(--ivory); }
-.calculation-dialog .calculation-result { font-size: 24px; color: var(--ivory); }
+.calculation-dialog p { margin-top: 18px; font-size: 14px; line-height: 1.65; color: var(--ink-soft); }
+.calculation-dialog code { overflow-wrap: anywhere; color: var(--ink); }
+.calculation-dialog .calculation-result { font-size: 24px; color: var(--ink); }
 
 * {
   box-sizing: border-box;

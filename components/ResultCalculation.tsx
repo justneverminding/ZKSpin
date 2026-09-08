@@ -34,6 +34,7 @@ export default function ResultCalculation({ round, onClose }: {
         <button type="button" onClick={() => dialog.current?.close()} aria-label="Close calculation">×</button>
       </header>
       <p className="calculation-result">{round.result} · {round.resultColor}</p>
+      <p>Played: <time dateTime={new Date(round.timestamp).toISOString()}>{new Date(round.timestamp).toLocaleString()}</time></p>
       {round.mode === "DEMO" ? (
         <>
           <p>A browser Math.random() draw between 0 (inclusive) and 1 (exclusive) selects one of 38 wheel positions.</p>
@@ -49,6 +50,7 @@ export default function ResultCalculation({ round, onClose }: {
       ) : (
         <>
           <p>Block {round.blockHeight}: <code>{round.blockHash}</code></p>
+          <p>The saved testnet block hash is the input. SHA-256 hashes the complete prefixed input again before the pocket is selected.</p>
           {error ? <p>The calculation could not be reconstructed.</p> : !proof ? <p>Calculating SHA-256...</p> : <>
             <p>1. Encode this input as UTF-8: <code>{proof.input}</code></p>
             <p>2. SHA-256 digest: <code>{proof.digest}</code></p>
@@ -60,6 +62,8 @@ export default function ResultCalculation({ round, onClose }: {
         </>
       )}
       <p>Bet: {round.bet} · Wager: {round.amount} ZEC · {round.outcome}</p>
+      <p>Return: {round.outcome === "WIN" ? `${round.amount} × 2 = ${round.amount * 2}` : "0"} ZEC.
+        Net change: {round.outcome === "WIN" ? `${round.amount * 2} − ${round.amount} = +${round.amount}` : `0 − ${round.amount} = −${round.amount}`} ZEC.</p>
       <p>Red/black and odd/even pay 1:1. Both 0 and 00 lose these bets. A win returns twice the wager including the original stake; a loss returns zero.</p>
     </dialog>
   );

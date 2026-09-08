@@ -3093,17 +3093,26 @@ export default function Home() {
                 <div
                   className="history-item"
                   key={`${round.timestamp}-${index}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View ${round.mode === "DEMO" ? "demo" : "testnet"} round ${round.result}, ${round.outcome}, details and calculation`}
+                  aria-haspopup="dialog"
+                  onClick={() => setCalculationRound(round)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setCalculationRound(round);
+                    }
+                  }}
                 >
 
-                  <button type="button"
+                  <span
                     className={`history-number ${round.resultColor.toLowerCase()}`}
-                    aria-label={`Show calculation for result ${round.result}`}
-                    onClick={() => setCalculationRound(round)}
                   >
                     {
                       round.result
                     }
-                  </button>
+                  </span>
 
                   <div className="history-details">
 
