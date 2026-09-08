@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { ArrowRight, ChevronRight, Minus, Plus } from "lucide-react";
 import RouletteWheel from "../../components/RouletteWheel";
 import ResultCalculation from "../../components/ResultCalculation";
 import { deriveRouletteResult } from "../../lib/rouletteVerifier";
@@ -2429,59 +2430,14 @@ export default function Home() {
 
         <div className="topbar-info">
 
-          <div className="mode-control">
-            <span className="mode-label">
-              MODE
-            </span>
-
-            <div className="mode-switch-row">
-
-              <span
-                className={
-                  !demoMode
-                    ? "mode-name active"
-                    : "mode-name"
-                }
-              >
-                TESTNET
-              </span>
-
-              <button
-                type="button"
-                className={
-                  demoMode
-                    ? "mode-toggle active"
-                    : "mode-toggle"
-                }
-                onClick={
-                  toggleDemoMode
-                }
-           disabled={
-  roundPhase === "LOCKING" ||
-  roundPhase === "WAITING" ||
-  roundPhase === "CONFIRMING" ||
-  roundPhase === "REORG_DETECTED" ||
-  roundPhase === "SPINNING"
-}
-                aria-label="Toggle Demo Mode"
-                aria-pressed={
-                  demoMode
-                }
-              >
-                <span className="mode-toggle-knob" />
-              </button>
-
-              <span
-                className={
-                  demoMode
-                    ? "mode-name active"
-                    : "mode-name"
-                }
-              >
-                DEMO
-              </span>
-
-            </div>
+          <Link href="/" className="home-link">Home</Link>
+          <div className="mode-control" role="group" aria-label="Game mode">
+            {[true, false].map(isDemo => <button key={String(isDemo)} type="button"
+              aria-pressed={demoMode === isDemo}
+              disabled={!hydrated || !["BETTING", "RESULT", "MISSED"].includes(roundPhase)}
+              onClick={() => { if (demoMode !== isDemo) toggleDemoMode(); }}>
+              {isDemo ? "DEMO" : "TESTNET"}
+            </button>)}
           </div>
 
           <div className="balance">
@@ -2675,7 +2631,9 @@ export default function Home() {
 
       </section>
 
-      <section className="verification-panel">
+      <details className="verification-panel">
+        <summary>Round source &amp; verification <ChevronRight size={16} /></summary>
+        <div className="verification-row"><span>Network</span><strong>{demoMode ? "Demo / local random" : testnetConnected ? `Connected / block ${blockHeight}` : "Offline / testnet unavailable"}</strong></div>
 
         <div className="verification-header">
 
@@ -2818,9 +2776,10 @@ export default function Home() {
 
         </div>
 
-      </section>
+      </details>
 
-      <section className="bet-panel">
+      <section className="bet-panel" aria-labelledby="bet-heading">
+        <h2 id="bet-heading">Place your bet.</h2>
 
         <div className="betting-timer">
 
@@ -2887,6 +2846,8 @@ export default function Home() {
           <div className="amount-control">
 
             <button
+              aria-label="Decrease bet amount"
+              title="Decrease bet amount"
               onClick={() =>
                 setBetAmount(
                   (current) =>
@@ -2906,10 +2867,11 @@ export default function Home() {
                 !bettingOpen
               }
             >
-              -
+              <Minus size={20} />
             </button>
 
             <input
+              aria-label="Bet amount in ZEC"
               type="number"
               min="1"
               step="1"
@@ -2933,7 +2895,7 @@ export default function Home() {
               ZEC
             </span>
 
-            <button
+            <button aria-label="Increase bet amount" title="Increase bet amount"
               onClick={() =>
                 setBetAmount(
                   (current) =>
@@ -2950,7 +2912,7 @@ export default function Home() {
                 !bettingOpen
               }
             >
-              +
+              <Plus size={20} />
             </button>
 
           </div>
@@ -2979,6 +2941,7 @@ export default function Home() {
                 bet
               ) => (
                 <button
+                  aria-pressed={selectedBet === bet}
                   key={
                     bet
                   }
@@ -2997,6 +2960,7 @@ export default function Home() {
                     !bettingOpen
                   }
                 >
+                  {(bet === "RED" || bet === "BLACK") && <span className={`bet-swatch ${bet.toLowerCase()}`} aria-hidden="true" />}
                   {bet}
                 </button>
               )
@@ -3025,7 +2989,7 @@ export default function Home() {
           {roundPhase ===
           "BETTING"
             ? demoMode
-              ? "DEMO SPIN"
+              ? "SPIN"
               : "SPIN"
             : roundPhase ===
               "LOCKING"
@@ -3056,7 +3020,10 @@ export default function Home() {
               "RESULT"
             ? "ROUND COMPLETE"
             : "ROUND MISSED"}
+          <ArrowRight size={22} aria-hidden="true" />
         </button>
+        <p className="simulation-note">Simulated credits only. No real ZEC at stake.</p>
+        {!demoMode && !testnetConnected && <p className="simulation-note" role="status">Testnet is unavailable. You can switch to Demo.</p>}
 
       </section>
 
@@ -3096,6 +3063,7 @@ export default function Home() {
                   role="button"
                   tabIndex={0}
                   aria-label={`View ${round.mode === "DEMO" ? "demo" : "testnet"} round ${round.result}, ${round.outcome}, details and calculation`}
+                  title={`${formatHistoryTime(round.timestamp)} - ${round.bet} - ${round.outcome}`}
                   aria-haspopup="dialog"
                   onClick={() => setCalculationRound(round)}
                   onKeyDown={(event) => {
@@ -3115,79 +3083,12 @@ export default function Home() {
                   </span>
 
                   <div className="history-details">
-
-                    <div className="history-top-row">
-
-                      <span>
-                        BET:{" "}
-                        {
-                          round.bet
-                        }
-                      </span>
-
-                      <span>
-                        {formatHistoryTime(
-                          round.timestamp
-                        )}
-                      </span>
-
-                    </div>
-
-                    <p>
-                      {
-                        round.amount
-                      }{" "}
-                      ZEC
-                    </p>
-
-                    <p>
-                      RESULT:{" "}
-                      {
-                        round.resultColor
-                      }
-                    </p>
-
-                    {round.mode ===
-                    "DEMO" ? (
-                      <p className="history-block">
-                        DEMO ROUND •
-                        RANDOM
-                      </p>
-                    ) : (
-                      <p className="history-block">
-                        BLOCK #
-                        {round.blockHeight ??
-                          "—"}
-                      </p>
-                    )}
-
-                    {round.mode !==
-                      "DEMO" &&
-                      round.blockHash && (
-                        <code className="history-hash">
-                          {round.blockHash.slice(
-                            0,
-                            18
-                          )}
-                          ...
-                        </code>
-                      )}
-
-                    <strong
-                      className={
-                        round.outcome ===
-                        "WIN"
-                          ? "history-win"
-                          : "history-loss"
-                      }
-                    >
-                      {round.outcome ===
-                      "WIN"
-                        ? `WIN • +${round.amount} ZEC`
-                        : `LOSS • -${round.amount} ZEC`}
-                    </strong>
-
+                    <strong>{round.resultColor}</strong>
+                    <span>{round.mode === "DEMO" ? "DEMO" : "TESTNET"}</span>
+                    <span>{round.amount} ZEC</span>
+                    <span className={round.outcome === "WIN" ? "history-win" : "history-loss"}>{round.outcome === "WIN" ? "+" : "-"}{round.amount}</span>
                   </div>
+                  <ChevronRight size={18} aria-hidden="true" />
 
                 </div>
               )

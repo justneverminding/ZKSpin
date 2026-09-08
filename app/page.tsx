@@ -13,25 +13,29 @@ export default function Home() {
       <HomeMotion />
       <a className={s.skip} href="#about">Skip to introduction</a>
       <header className={s.nav}>
-        <Link className={s.wordmark} href="/" aria-label="ZK Spin home">ZK<span>Spin</span><span className={s.brandDot}>.</span></Link>
-        <nav aria-label="Main navigation"><a href="#about">About</a><a href="#how">How it works</a><a href="#modes">Demo &amp; Testnet</a><a href="#technology">Technology</a></nav>
-        <Link className={s.navPlay} href="/play">{play}</Link>
+        <Link className={s.wordmark} href="/" aria-label="ZK Spin home">ZKSPIN</Link>
+        <nav aria-label="Main navigation"><a href="#how">How it works</a><a href="#modes">Demo &amp; Testnet</a></nav>
+        <Link className={s.navPlay} href="/play">Play <ArrowRight size={16} /></Link>
       </header>
 
       <section className={s.hero} aria-labelledby="hero-title">
-        <Image src="/images/roulette-precision.webp" alt="Precision-machined silver roulette track with a white ceramic ball" fill preload sizes="100vw" className={s.heroImage} />
+        <Image src="/images/roulette-hero.webp" alt="Close-up of a silver roulette wheel and white ball" fill preload sizes="100vw" className={s.heroImage} />
         <div className={s.heroCopy}>
-          <p className={s.eyebrow}><span className={s.statusDot} /> CHANCE, WITH A CLOSER LOOK</p>
-          <h1 id="hero-title">ZK Spin<span>.</span></h1>
+          <p className={s.eyebrow}>ZCASH TESTNET BLOCK ROULETTE</p>
+          <h1 id="hero-title">ZKSPIN</h1>
           <p className={s.tagline}>The thrill of chance.<br />The clarity of math.</p>
-          <p className={s.intro}>A fresh take on roulette. Find your rhythm in Demo or let a Zcash testnet block decide the spin.</p>
-          <div className={s.actions}><Link className={s.primary} href="/play">{play}</Link><a className={s.secondary} href="#how">See how it works <ArrowDown size={16} /></a></div>
+          <div className={s.actions}><Link className={s.primary} href="/play">Let&apos;s play <ArrowRight size={22} /></Link></div>
           <p className={s.caption}>No wallet. No deposits. Just simulated credits.</p>
         </div>
-        <div className={s.heroBottom}><a href="#about"><ArrowDown size={16} /> A different kind of roulette</a><span>01 — DISCOVER THE EXPERIENCE</span></div>
+        <div className={s.heroBottom}><a href="#about"><ArrowDown size={16} /> Explore ZK Spin</a><span>CHANCE / MEETS / CLARITY</span></div>
       </section>
 
-      <div className={s.facts}><span><CircleDot size={16} /> 38 pockets</span><span><Layers3 size={16} /> Two ways to explore</span><span><ScanLine size={16} /> Inspect every result</span><span><Check size={16} /> Simulated credits only</span></div>
+      <section className={s.overview} aria-label="Game overview">
+        <div><p className={s.eyebrow}>HOW IT WORKS</p><h2>Simple. Transparent.</h2></div>
+        <article><span>01</span><h3>Place your bet</h3><p>Choose your prediction and amount.</p></article>
+        <article><span>02</span><h3>Watch the spin</h3><p>Try Demo or a Zcash testnet block.</p></article>
+        <article><span>03</span><h3>Check the result</h3><p>Explore the calculation yourself.</p></article>
+      </section>
 
       <section className={s.section} id="about" data-home-reveal>
         <div className={s.splitHeading}><div><p className={s.eyebrow}>01 / THE IDEA</p><h2>Roulette.<br /><span>Made different.</span></h2></div><p className={s.lead}>The familiar suspense of a spinning wheel, with room to understand what happens behind it. Simple choices. Considered design. A result you can explore.</p></div>
@@ -86,7 +90,7 @@ export default function Home() {
       </section>
 
       <section className={s.film}>
-        <Image src="/images/roulette-precision.webp" alt="Close-up of the roulette ball on its polished metal track" fill sizes="100vw" className={s.filmImage} />
+        <Image src="/images/roulette-hero.webp" alt="Close-up of the roulette ball on its polished metal track" fill sizes="100vw" className={s.filmImage} />
         <div><p className={s.eyebrow}>PRECISION MEETS POSSIBILITY</p><h2>Every spin<br />is a moment.</h2></div><span className={s.filmLabel}>ZK SPIN / A CLOSER LOOK</span>
       </section>
 
@@ -101,7 +105,7 @@ export default function Home() {
       </div></section>
 
       <section className={s.closing} data-home-reveal><CircleDot className={s.closingIcon} size={38} strokeWidth={1} /><p className={s.eyebrow}>CURIOSITY BROUGHT YOU HERE</p><h2>The wheel is waiting.</h2><p>Choose your experience. Step into ZK Spin.</p><Link className={s.primary} href="/play">{play}</Link><div className={s.closingModes}><Link href="/play">Demo</Link><span>/</span><Link href="/play">Testnet</Link></div></section>
-      <footer className={s.footer}><Link className={s.wordmark} href="/">ZK<span>Spin</span><span className={s.brandDot}>.</span></Link><p>Zcash Testnet Block Roulette</p><span>Experimental game. Simulated credits only.</span><a href="#hero-title" aria-label="Back to top"><MoveUpRight size={18} /></a></footer>
+      <footer className={s.footer}><Link className={s.wordmark} href="/">ZKSPIN</Link><p>Zcash Testnet Block Roulette</p><span>Experimental game. Simulated credits only.</span><a href="#hero-title" aria-label="Back to top"><MoveUpRight size={18} /></a></footer>
     </main>
   );
 }
