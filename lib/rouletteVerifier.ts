@@ -15,6 +15,10 @@ const roulettePockets: DerivedRouletteResult[] = [
 export async function deriveRouletteResult(
   blockHash: string
 ): Promise<DerivedRouletteResult | null> {
+  return (await explainRouletteResult(blockHash))?.pocket ?? null;
+}
+
+export async function explainRouletteResult(blockHash: string) {
   if (!/^[0-9a-fA-F]{64}$/.test(blockHash)) {
     return null;
   }
@@ -67,7 +71,14 @@ export async function deriveRouletteResult(
 
     const group = Math.floor(value / 6);
 
-    return roulettePockets[group];
+    return {
+      input: `zkspin:v1:${blockHash.toLowerCase()}`,
+      digest: Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join(""),
+      rejected: Array.from(bytes.slice(0, i)),
+      byte: value,
+      index: group,
+      pocket: roulettePockets[group],
+    };
   }
 
   return null;

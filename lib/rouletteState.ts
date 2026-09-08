@@ -15,6 +15,7 @@ export type RoundPhase =
 export type RoundMode = "BLOCKCHAIN" | "DEMO";
 
 export type HistoryEntry = {
+  demoDraw?: number;
   result: RouletteResult;
   resultColor: "RED" | "BLACK" | "GREEN";
   bet: BetType;
@@ -135,7 +136,9 @@ function isHistoryEntry(value: unknown): value is HistoryEntry {
   }
 
   if (value.mode === "DEMO") {
-    return value.blockHeight === null && value.blockHash === null;
+    return value.blockHeight === null && value.blockHash === null &&
+      (value.demoDraw === undefined ||
+        (isFiniteNumber(value.demoDraw) && value.demoDraw < 1));
   }
 
   return isNonNegativeInteger(value.blockHeight) && isBlockHash(value.blockHash);

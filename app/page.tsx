@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import RouletteWheel from "../components/RouletteWheel";
+import ResultCalculation from "../components/ResultCalculation";
 import { deriveRouletteResult } from "../lib/rouletteVerifier";
 import {
   parseStoredState,
@@ -233,6 +234,7 @@ function removeStoredState() {
 }
 
 export default function Home() {
+  const [calculationRound, setCalculationRound] = useState<HistoryEntry | null>(null);
   const [
     hydrated,
     setHydrated,
@@ -1970,9 +1972,10 @@ export default function Home() {
       roulette pocket.
     */
 
+    const demoDraw = Math.random();
     const randomIndex =
       Math.floor(
-        Math.random() *
+        demoDraw *
           wheelNumbers.length
       );
 
@@ -2084,6 +2087,7 @@ export default function Home() {
 
             mode:
               "DEMO",
+            demoDraw,
           };
 
         setHistory(
@@ -2438,7 +2442,7 @@ export default function Home() {
                     : "mode-name"
                 }
               >
-                BLOCKCHAIN
+                TESTNET
               </span>
 
               <button
@@ -2485,7 +2489,7 @@ export default function Home() {
             </span>
 
             <strong>
-              {balance} TEST CREDITS
+              {balance} ZEC
             </strong>
           </div>
 
@@ -2493,7 +2497,7 @@ export default function Home() {
 
             <span>
               {demoMode
-                ? "DEMO MODE • LOCAL PSEUDORANDOM"
+                ? "DEMO MODE • RANDOM"
                 : `CIPHERSCAN • ${
                     testnetConnected
                       ? "CONNECTED"
@@ -2630,9 +2634,11 @@ export default function Home() {
               RESULT
             </span>
 
-            <strong>
+            <button type="button" className="result-number-button"
+              aria-label={`Show calculation for result ${result}`}
+              onClick={() => setCalculationRound(history[0] ?? null)}>
               {result}
-            </strong>
+            </button>
 
             <em>
               {getResultColor(
@@ -2680,7 +2686,7 @@ export default function Home() {
 
           <strong>
             {demoMode
-              ? "LOCAL PSEUDORANDOM"
+              ? "RANDOM"
               : sourceState ===
                 "SOURCE_LAG"
               ? "SYNCING"
@@ -2718,7 +2724,7 @@ export default function Home() {
 
           <strong>
             {demoMode
-              ? "LOCAL PSEUDORANDOM"
+              ? "RANDOM"
               : "CIPHERSCAN API"}
           </strong>
 
@@ -2923,7 +2929,7 @@ export default function Home() {
             />
 
             <span>
-              TEST CREDITS
+              ZEC
             </span>
 
             <button
@@ -3088,13 +3094,15 @@ export default function Home() {
                   key={`${round.timestamp}-${index}`}
                 >
 
-                  <div
+                  <button type="button"
                     className={`history-number ${round.resultColor.toLowerCase()}`}
+                    aria-label={`Show calculation for result ${round.result}`}
+                    onClick={() => setCalculationRound(round)}
                   >
                     {
                       round.result
                     }
-                  </div>
+                  </button>
 
                   <div className="history-details">
 
@@ -3119,7 +3127,7 @@ export default function Home() {
                       {
                         round.amount
                       }{" "}
-                      TEST CREDITS
+                      ZEC
                     </p>
 
                     <p>
@@ -3133,7 +3141,7 @@ export default function Home() {
                     "DEMO" ? (
                       <p className="history-block">
                         DEMO ROUND •
-                        LOCAL PSEUDORANDOM
+                        RANDOM
                       </p>
                     ) : (
                       <p className="history-block">
@@ -3165,8 +3173,8 @@ export default function Home() {
                     >
                       {round.outcome ===
                       "WIN"
-                        ? `WIN • +${round.amount} TEST CREDITS`
-                        : `LOSS • -${round.amount} TEST CREDITS`}
+                        ? `WIN • +${round.amount} ZEC`
+                        : `LOSS • -${round.amount} ZEC`}
                     </strong>
 
                   </div>
@@ -3180,6 +3188,8 @@ export default function Home() {
 
       </section>
 
+      {calculationRound && <ResultCalculation round={calculationRound}
+        onClose={() => setCalculationRound(null)} />}
     </main>
   );
 }
